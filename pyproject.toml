@@ -1,5 +1,5 @@
 [project]
-name = "simpestringgenerator_comfyui"
+name = "DemonAlone-nodes-ComfyUI"
 description = "A collection of nodes that provide dynamic dropdown selectors for Samplers, Schedulers, Checkpoints, and Diffusion Models, outputting a comma-separated string for use in XY plots."
 version = "1.0.2"
 license = {file = "LICENSE"} 

@@ -2,14 +2,38 @@ from .nodes import (
     SamplerGeneratorNode,
     SchedulerGeneratorNode,
     ModelGeneratorNode,
-    DiffusionModelGeneratorNode
+    DiffusionModelGeneratorNode,
+    AnyAdapterNode,
+    CheckpointSelectorNode,
+    DiffusionModelSelectorNode,
+    VAEGeneratorNode,
+    TextEncoderGeneratorNode,
+    VAESelectorNode,        
+    TextEncoderSelectorNode,
+    StringToIntNode,          
+    StringToFloatNode,
+    TextConcatNode,
+    LORASelectorNode,
+    ClipSkipSliderNode,
 )
 
 NODE_CLASS_MAPPINGS = {
     "SamplerGeneratorNode": SamplerGeneratorNode,
     "SchedulerGeneratorNode": SchedulerGeneratorNode,
     "ModelGeneratorNode": ModelGeneratorNode,
-    "DiffusionModelGeneratorNode": DiffusionModelGeneratorNode
+    "DiffusionModelGeneratorNode": DiffusionModelGeneratorNode,
+    "AnyAdapterNode": AnyAdapterNode,
+    "CheckpointSelectorNode": CheckpointSelectorNode,
+    "DiffusionModelSelectorNode": DiffusionModelSelectorNode,
+    "VAEGeneratorNode": VAEGeneratorNode, 
+    "TextEncoderGeneratorNode": TextEncoderGeneratorNode,
+    "VAESelectorNode": VAESelectorNode,
+    "TextEncoderSelectorNode": TextEncoderSelectorNode,
+    "StringToIntNode": StringToIntNode,
+    "StringToFloatNode": StringToFloatNode,
+    "TextConcatNode": TextConcatNode,
+    "LORASelectorNode": LORASelectorNode,
+    "ClipSkipSliderNode": ClipSkipSliderNode
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -17,4 +41,16 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "SchedulerGeneratorNode": "Dynamic Scheduler Selector",
     "ModelGeneratorNode": "Dynamic Checkpoint Selector",
     "DiffusionModelGeneratorNode": "Dynamic Diffusion Model Selector",
+    "AnyAdapterNode": "Any‑to‑Any Adapter",
+    "СheckpointSelectorNode": "Checkpoint Selector",
+    "DiffusionModelSelectorNode": "Diffusion Model Selector",
+    "VAEGeneratorNode": "Dynamic VAE Selector",
+    "TextEncoderGeneratorNode": "Dynamic Encoder Selector",
+    "VAESelectorNode": "Dynamic VAE Selector",
+    "TextEncoderSelectorNode": "Dynamic Encoder Selector",
+     "StringToIntNode": "String → Integer",
+    "StringToFloatNode": "String → Float",
+    "TextConcatNode": "Text Concatenator",
+    "LORASelectorNode": "Dynamic LORA Selector",
+    "ClipSkipSliderNode": "Clip Skip Slider",
 }

@@ -28,7 +28,7 @@ Documentation = "https://github.com/DemonAlone/SimpeStringGenerator_ComfyUI/wiki
 "Bug Tracker" = "https://github.com/DemonAlone/SimpeStringGenerator_ComfyUI/issues"
 
 [tool.comfy]
-PublisherId = "452dee55-db7f-4eef-a0e7-c76b4fb2eb9f"
+PublisherId = "DemonAlone"
 DisplayName = "SimpeStringGenerator_ComfyUI"
 Icon = ""
 includes = [] 

@@ -28,7 +28,7 @@ Documentation = "https://github.com/DemonAlone/DemonAlone-nodes-ComfyUI/wiki"
 "Bug Tracker" = "https://github.com/DemonAlone/DemonAlone-nodes-ComfyUI/issues"
 
 [tool.comfy]
-PublisherId = "DemonAlone"
+PublisherId = "demonalone"
 DisplayName = "DemonAlone-nodes-ComfyUI"
 Icon = ""
 includes = [] 

@@ -22,10 +22,10 @@ license = {file = "LICENSE"}
 
 
 [project.urls]
-Repository = "https://github.com/DemonAlone/SimpeStringGenerator_ComfyUI"
+Repository = "https://github.com/DemonAlone/DemonAlone-nodes-ComfyUI"
 #  Used by Comfy Registry https://registry.comfy.org
-Documentation = "https://github.com/DemonAlone/SimpeStringGenerator_ComfyUI/wiki"
-"Bug Tracker" = "https://github.com/DemonAlone/SimpeStringGenerator_ComfyUI/issues"
+Documentation = "https://github.com/DemonAlone/DemonAlone-nodes-ComfyUI/wiki"
+"Bug Tracker" = "https://github.com/DemonAlone/DemonAlone-nodes-ComfyUI/issues"
 
 [tool.comfy]
 PublisherId = "DemonAlone"

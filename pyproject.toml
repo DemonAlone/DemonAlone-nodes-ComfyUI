@@ -33,4 +33,3 @@ DisplayName = "SimpeStringGenerator_ComfyUI"
 Icon = ""
 includes = [] 
 # "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility
-

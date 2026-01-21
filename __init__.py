@@ -17,6 +17,9 @@ from .nodes import (
     ClipSkipSliderNode,
     PonyPrefixesNode,
     ImageResizeNode,
+    ResizeMethodControlNode,
+    ResizeInterpolationControlNode,
+    AnyConcatNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -38,6 +41,9 @@ NODE_CLASS_MAPPINGS = {
     "ClipSkipSliderNode": ClipSkipSliderNode,
     "PonyPrefixesNode": PonyPrefixesNode,
     "ImageResizeNode": ImageResizeNode,
+    "ResizeMethodControlNode": ResizeMethodControlNode,
+    "ResizeInterpolationControlNode": ResizeInterpolationControlNode,
+    "AnyConcatNode": AnyConcatNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -58,5 +64,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LORASelectorNode": "Dynamic LORA Selector",
     "ClipSkipSliderNode": "Clip Skip Slider",
     "PonyPrefixesNode": "Rating, Score, Source for Pony",
-    "ImageResizeNode": "Image Resize",
+    "ImageResizeNode": "Image and Mask Resize",
+    "ResizeMethodControl": "ResizeMethodControl",
+    "ResizeInterpolationControlNode": "ResizeInterpolationControl",
+    "AnyConcatNode": "Any Concat",
 }

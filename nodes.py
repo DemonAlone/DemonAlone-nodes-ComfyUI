@@ -511,102 +511,99 @@ class PonyPrefixesNode:
         return (result,)
         
 class ImageResizeNode:
-    #ImageResizeNode is based on 🔧 Image Resize from https://github.com/cubiq/ComfyUI_essentials
+
+    # ImageResizeNode is based on 🔧 Image Resize from https://github.com/cubiq/ComfyUI_essentials
     """
-    Resize (compress/scale) an image with various methods.
+    Resize an image and a mask synchronously.
+    The mask is resized with nearest‑neighbor to keep its binary nature.
     """
 
-    # --------------------------------------------------------------------
-    # UI interface (what the user sees in the graph)
-    # --------------------------------------------------------------------
-    RETURN_TYPES = ("IMAGE", "INT", "INT")
-    RETURN_NAMES = ("IMAGE", "width", "height")
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT")
+    RETURN_NAMES = ("image_out", "mask_out", "width", "height")
     FUNCTION     = "execute"
-    CATEGORY     = "essentials/image manipulation"
+    CATEGORY     = "utils"
 
     @classmethod
-    def INPUT_TYPES(s):
-        """
-        Defines the inputs that appear in the UI.
-        """
+    def INPUT_TYPES(cls):
         return {
-            "required": {
-                # types that will be visible to the user in the UI
-                "image":          ("IMAGE",),
+            "optional": {          # both inputs are now optional
+                "image":  ("IMAGE",),
+                "mask":   ("MASK",),
 
-                # integers – 0 means “do not change” (you can set a specific size)
-                "width":          ("INT", {"default": 512, "min": 0}),
-                "height":         ("INT", {"default": 512, "min": 0}),
+                "width":  ("INT", {"default": 512, "min": 0}),
+                "height": ("INT", {"default": 512, "min": 0}),
 
-                # dropdown lists
-                "method":         (["stretch",
-                                      "keep proportion",
-                                      "fill / crop",
-                                      "pad"],),
-                "interpolation":  (["nearest",
-                                    "bilinear",
-                                    "bicubic",
-                                    "area",
-                                    "nearest-exact",
-                                    "lanczos"],),
-
-                # when to apply resizing
-                "condition":      (["always",
-                                    "downscale if bigger",
-                                    "upscale if smaller",
-                                    "if bigger area",
-                                    "if smaller area"],),
+                "method":        (["stretch",
+                                   "keep proportion",
+                                   "fill / crop",
+                                   "pad"],),
+                "interpolation": (["nearest",
+                                   "bilinear",
+                                   "bicubic",
+                                   "area",
+                                   "nearest-exact",
+                                   "lanczos"],),
+                "condition":     (["always",
+                                   "downscale if bigger",
+                                   "upscale if smaller",
+                                   "if bigger area",
+                                   "if smaller area"],),
             }
         }
 
-    # --------------------------------------------------------------------
-    # Core logic
-    # --------------------------------------------------------------------
     def execute(self,
-                image: torch.Tensor,
-                width: int,
-                height: int,
+                image=None,
+                mask=None,
+                width: int = 512,
+                height: int = 512,
                 method: str = "stretch",
                 interpolation: str = "nearest",
                 condition: str = "always"):
         """
-        Input:
-          image       – (B,H,W,C)
-          width,height – integers (0 → “don’t change”; can specify a size)
-          method      – stretch / keep proportion / fill / crop / pad
-          interpolation – interpolation method
-          condition   – when to perform resizing
-
-        Output: (IMAGE, new_width, new_height)
+        Resizes both an image and a mask (if provided) using the same target size.
+        If only one of them is connected, that one will be resized while the other
+        stays untouched.  Returns None for the output that was not given.
         """
-        # -----------------------------
-        # 1. Original image dimensions
-        # -----------------------------
-        _, oh, ow, _ = image.shape
 
-        # -----------------------------
-        # 2. Determine target size and possible padding / coordinates
-        # -----------------------------
+        has_image = image is not None
+        has_mask  = mask is not None
+
+        if not (has_image or has_mask):
+            raise ValueError("At least one of 'image' or 'mask' must be connected")
+
+        # --------- 0. Determine original sizes ----------
+        source_tensor = image if has_image else mask
+        if source_tensor.ndim == 4:
+            _, oh, ow, _ = source_tensor.shape   # (B,H,W,C)
+        elif source_tensor.ndim == 3:
+            _, oh, ow = source_tensor.shape      # (B,H,W)
+        else:
+            raise ValueError(f"Unsupported source tensor shape: {source_tensor.shape}")
+
+        # --------- 1. Compute target size ----------
+        pad_left = pad_right = pad_top = pad_bottom = 0
+        x = y = x2 = y2 = None
+
         if method == "keep proportion":
             ratio   = min(width / ow if width else float("inf"),
-                          height / oh if height else float("inf"))
+                         height / oh if height else float("inf"))
             new_w, new_h = round(ow * ratio), round(oh * ratio)
-            width, height = new_w, new_h
-            pad_left = pad_right = pad_top = pad_bottom = 0
+            target_w, target_h = new_w, new_h
 
         elif method == "pad":
             ratio   = min(width / ow if width else float("inf"),
-                          height / oh if height else float("inf"))
+                         height / oh if height else float("inf"))
             new_w, new_h = round(ow * ratio), round(oh * ratio)
             pad_left  = (width - new_w) // 2
             pad_right = width - new_w - pad_left
             pad_top   = (height - new_h) // 2
             pad_bottom= height - new_h - pad_top
-            width, height = new_w, new_h
+            target_w, target_h = new_w, new_h
 
         elif method == "fill / crop":
-            target_w, target_h = width if width else ow, height if height else oh
-            ratio   = max(target_w / ow, target_h / oh)
+            target_w = width if width else ow
+            target_h = height if height else oh
+            ratio    = max(target_w / ow, target_h / oh)
             new_w, new_h = round(ow * ratio), round(oh * ratio)
 
             x  = (new_w - target_w) // 2
@@ -619,53 +616,152 @@ class ImageResizeNode:
             if y2 > new_h:   y -= (y2 - new_h)
             if y < 0:        y = 0
 
-            width, height = new_w, new_h
+            target_w, target_h = new_w, new_h
 
-        else:      # stretch or any unknown method
-            width  = width  if width  else ow
-            height = height if height else oh
-            pad_left = pad_right = pad_top = pad_bottom = 0
+        else:                          # stretch or unknown method
+            target_w = width  if width  else ow
+            target_h = height if height else oh
 
-        # -----------------------------
-        # 3. Resize condition (condition)
-        # -----------------------------
+        new_width, new_height = target_w, target_h
+
+        # --------- 2. When to perform resize ----------
         should_resize = (
             condition == "always" or
-            ("downscale if bigger" == condition and (oh > height or ow > width)) or
-            ("upscale if smaller" == condition and (oh < height or ow < width)) or
-            ("bigger area" in condition and (oh * ow > height * width)) or
-            ("smaller area" in condition and (oh * ow < height * width))
+            ("downscale if bigger" == condition and (oh > new_height or ow > new_width)) or
+            ("upscale if smaller" == condition and (oh < new_height or ow < new_width)) or
+            ("bigger area" in condition and (oh * ow > new_height * new_width)) or
+            ("smaller area" in condition and (oh * ow < new_height * new_width))
         )
 
-        if should_resize:
-            # Convert to format (B,C,H,W)
-            out = image.permute(0, 3, 1, 2)
+        # --------- 3. Resize image ----------
+        if has_image:
+            img = image.permute(0, 3, 1, 2)   # B,C,H,W
 
-            # Choose interpolation mode
-            if interpolation == "lanczos" and comfy is not None:
-                out = comfy.utils.lanczos(out, width, height)
-            else:
-                kwargs = {"size": (height, width)}
-                if interpolation in ("linear", "bilinear", "bicubic", "trilinear"):
-                    # only for modes that support align_corners
-                    kwargs["align_corners"] = False
-                out = F.interpolate(out, mode=interpolation, **kwargs)
+            if should_resize:
+                if interpolation == "lanczos" and comfy is not None:
+                    img = comfy.utils.lanczos(img, new_width, new_height)
+                else:
+                    kwargs = {"size": (new_height, new_width)}
+                    if interpolation in ("linear", "bilinear", "bicubic", "trilinear"):
+                        kwargs["align_corners"] = False
+                    img = F.interpolate(img, mode=interpolation, **kwargs)
 
-            # If this is pad – add borders (value 0 → black background)
-            if method == "pad" and (pad_left or pad_right or pad_top or pad_bottom):
-                out = F.pad(out,
-                            (pad_left, pad_right, pad_top, pad_bottom),
-                            mode='constant',
-                            value=0)
+                if method == "pad" and (pad_left or pad_right or pad_top or pad_bottom):
+                    img = F.pad(img,
+                                (pad_left, pad_right, pad_top, pad_bottom),
+                                mode='constant', value=0)
+                if method == "fill / crop":
+                    img = img[:, :, y:y2, x:x2]
 
-            # If this is fill / crop – cut the center of the image
-            if method == "fill / crop":
-                out = out[:, :, y:y2, x:x2]
-
-            out = out.permute(0, 2, 3, 1)   # back to (B,H,W,C)
-
+            image_out = img.permute(0, 2, 3, 1)   # B,H,W,C
         else:
-            # If condition didn’t trigger – return original image
-            out = image
+            image_out = None
 
-        return out, width, height
+        # --------- 4. Resize mask ----------
+        if has_mask:
+            # --- Prepare input for processing ---
+            if mask.ndim == 3:          # (B, H, W)
+                msk = mask.unsqueeze(1)    # -> B,1,H,W
+            elif mask.ndim == 4 and mask.shape[3] == 1:   # (B, H, W, 1)
+                msk = mask.permute(0, 3, 1, 2)           # -> B,1,H,W
+            else:
+                raise ValueError(f"Unsupported mask shape: {mask.shape}")
+
+            if should_resize:
+                msk = F.interpolate(msk,
+                                    size=(new_height, new_width),
+                                    mode='nearest')
+
+                if method == "pad" and (pad_left or pad_right or pad_top or pad_bottom):
+                    msk = F.pad(msk,
+                                (pad_left, pad_right, pad_top, pad_bottom),
+                                mode='constant', value=0)
+                if method == "fill / crop":
+                    msk = msk[:, :, y:y2, x:x2]
+
+            # --- Return mask in format (B,H,W) ---
+            mask_out = msk.squeeze(-1)      # remove channel 1
+        else:
+            mask_out = None
+
+        return image_out, mask_out, new_width, new_height
+
+class ResizeMethodControlNode:
+    """
+    Outputs the chosen resize method.
+    Can be connected to the 'method' input of ImageResizeNode.
+    """
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                # Same enumeration as in ImageResizeNode
+                "method": ([
+                    "stretch",
+                    "keep proportion",
+                    "fill / crop",
+                    "pad"
+                ],),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)          # one output element – string
+    FUNCTION    = "set"                 # name of the method to be called
+    CATEGORY    = "utils"
+
+    def set(self, method: str):
+        """Return the selected method as a single output."""
+        return (method,)
+
+class ResizeInterpolationControlNode:
+    """
+    Outputs the chosen interpolation type.
+    Can be connected to the 'interpolation' input of ImageResizeNode.
+    """
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                # List of all options from ImageResizeNode
+                "interpolation": ([
+                    "nearest",
+                    "bilinear",
+                    "bicubic",
+                    "area",
+                    "nearest-exact",
+                    "lanczos"
+                ],),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)          # one output element – string
+    FUNCTION    = "set"                 # name of the method to be called
+    CATEGORY    = "utils"
+
+    def set(self, interpolation: str):
+        """Return the selected interpolation type as a single output."""
+        return (interpolation,)
+
+class AnyConcatNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            # Delimiter: always a text field, can be changed manually
+            "required": {"delimiter": ("STRING", {"default": " "})},
+
+            # text1…text5 are only connectors. Their type "*" means “any value”, but in the UI they appear as empty slots without a text field.
+            "optional": {f"text{i}": ("*",) for i in range(1, 6)},
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "concat"
+    CATEGORY = "utils"
+
+    def concat(self, delimiter: str, **kwargs):
+        """
+        kwargs contains only those slots that were actually connected.
+        If a slot was not connected, it simply is absent from the dict.
+        """
+        # Convert everything to string (so you can concatenate numbers and other types) and remove empty/None values.
+        texts = [str(v) for v in kwargs.values() if v]
+        return (delimiter.join(texts),)

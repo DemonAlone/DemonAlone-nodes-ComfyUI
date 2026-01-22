@@ -1,7 +1,7 @@
 [project]
 name = "demonalone-nodes-comfyui"
 description = "A collection of nodes that provide dynamic dropdown selectors for Samplers, Schedulers, Checkpoints, and Diffusion Models, outputting a comma-separated string for use in XY plots."
-version = "1.3.0"
+version = "1.3.1"
 license = {file = "LICENSE"} 
 # classifiers = [
 #     "Environment :: GPU :: NVIDIA CUDA",    # NVIDIA CUDA support

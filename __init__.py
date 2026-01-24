@@ -20,6 +20,7 @@ from .nodes import (
     ResizeMethodControlNode,
     ResizeInterpolationControlNode,
     AnyConcatNode,
+    OptionalCondMergeNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -44,6 +45,7 @@ NODE_CLASS_MAPPINGS = {
     "ResizeMethodControlNode": ResizeMethodControlNode,
     "ResizeInterpolationControlNode": ResizeInterpolationControlNode,
     "AnyConcatNode": AnyConcatNode,
+    "OptionalCondMergeNode": OptionalCondMergeNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -68,4 +70,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ResizeMethodControl": "ResizeMethodControl",
     "ResizeInterpolationControlNode": "ResizeInterpolationControl",
     "AnyConcatNode": "Any Concat",
+    "OptionalCondMergeNode": "Optional Conditioning Merge",
 }

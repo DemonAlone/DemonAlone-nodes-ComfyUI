@@ -21,6 +21,7 @@ from .nodes import (
     ResizeInterpolationControlNode,
     AnyConcatNode,
     OptionalCondMergeNode,
+    ScaleImageAspectNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -46,6 +47,7 @@ NODE_CLASS_MAPPINGS = {
     "ResizeInterpolationControlNode": ResizeInterpolationControlNode,
     "AnyConcatNode": AnyConcatNode,
     "OptionalCondMergeNode": OptionalCondMergeNode,
+    "ScaleImageAspectNode": ScaleImageAspectNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -71,4 +73,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ResizeInterpolationControlNode": "ResizeInterpolationControl",
     "AnyConcatNode": "Any Concat",
     "OptionalCondMergeNode": "Optional Conditioning Merge",
+    "ScaleImageAspectNode": "Scale Image",
 }

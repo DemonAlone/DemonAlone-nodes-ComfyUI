@@ -5,6 +5,8 @@ import torch
 import torch.nn.functional as F
 import comfy
 from pathlib import Path
+import numpy as np
+from PIL import Image
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -532,8 +534,8 @@ class ImageResizeNode:
                 "image":  ("IMAGE",),
                 "mask":   ("MASK",),
 
-                "width":  ("INT", {"default": 512, "min": 0}),
-                "height": ("INT", {"default": 512, "min": 0}),
+                "width":  ("INT", {"default": 512, "min": 0, "max": 16834}),
+                "height": ("INT", {"default": 512, "min": 0, "max": 16834}),
 
                 "method":        (["stretch",
                                    "keep proportion",
@@ -825,3 +827,100 @@ class OptionalCondMergeNode:
             merged.append((summed_tensor, conds[0][layer_idx][1]))
 
         return (merged,)
+
+class ScaleImageAspectNode:
+    # ScaleImageAspectNode is based on 🔧 Image Resize from Efficiency Nodes
+    """
+    # Efficiency Nodes - A collection of my ComfyUI custom nodes to help streamline workflows and reduce total node count.
+    # by Luciano Cirino (Discord: TSC#9184) - April 2023 - October 2023
+    # https://github.com/LucianoCirino/efficiency-nodes-comfyui
+    Resize an image and a mask synchronously.
+    The mask is resized with nearest‑neighbor to keep its binary nature.
+    """
+    """
+    Resizes an image while preserving its aspect ratio.
+    A single parameter `max_side` specifies the target size of **the longest** side of the image.
+    If set to 0, the image is passed through unchanged.
+
+        * If the current longest side > max_side → it is shrunk to max_side,
+          the other side is scaled proportionally.
+        * If the current longest side < max_side → it is enlarged to max_side
+          (again by a proportional factor).
+
+    The `max_side` value has a step of 64 and a maximum of 16384 pixels.
+    """
+
+    # ── I/O definitions for ComfyUI ───────────────────────────────
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image_out",)
+
+    FUNCTION     = "execute"
+    CATEGORY     = "utils"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image":      ("IMAGE",),                     # (B, H, W, C)
+                "max_side":   ("INT", {"default": 0,
+                                         "min": 0,
+                                         "max": 16384,
+                                         "step": 64}),          # target size of the longest side
+                "interpolation": ([
+                    "nearest",
+                    "bilinear",
+                    "bicubic",
+                    "area",
+                    "nearest-exact",
+                    "lanczos"
+                ],),
+            }
+        }
+
+    # ── Execution logic ───────────────────────────────────────────
+
+    def execute(self,
+                image=None,
+                max_side: int = 0,
+                interpolation: str = "nearest"):
+        """
+        Resizes the supplied image to a size that fits within
+        `max_side` (if > 0), keeping its aspect ratio.
+        If `max_side` is 0, returns the original image unchanged.
+        """
+
+        if image is None:
+            raise ValueError("The 'image' input must be connected.")
+
+        # ── 1. Verify input shape ───────────────────────────────
+
+        if image.ndim != 4:                     # expected (B, H, W, C)
+            raise ValueError(f"Image tensor must have shape (B,H,W,C), got {image.shape}")
+
+        B, oh, ow, C = image.shape
+
+        # If max_side == 0 – no resizing needed
+        if max_side == 0:
+            return (image,)
+
+        # ── 2. Compute scaling factor based on the longest side ────────
+
+        current_max = max(oh, ow)
+        ratio = max_side / current_max           # >1 → enlarge, <1 → shrink
+
+        new_w = max(1, round(ow * ratio))
+        new_h = max(1, round(oh * ratio))
+
+        # ── 3. Resize using PyTorch interpolation ───────────────────────
+
+        img = image.permute(0, 3, 1, 2)           # (B, C, H, W)
+
+        kwargs = {"size": (new_h, new_w)}
+        if interpolation in ("linear", "bilinear", "bicubic", "trilinear"):
+            kwargs["align_corners"] = False
+
+        img_resized = F.interpolate(img, mode=interpolation, **kwargs)
+
+        image_out = img_resized.permute(0, 2, 3, 1)   # back to (B, H, W, C)
+        return (image_out,)

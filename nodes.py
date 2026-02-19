@@ -139,15 +139,17 @@ class SamplerGeneratorNode:
         samplers = get_sampler_list()
         inputs = {"required": {f"sampler_{i+1}": (samplers, {"default": "none"}) for i in range(10)}}
         return inputs
-    RETURN_TYPES = ("STRING",)
-    FUNCTION = "generate_string"
+    RETURN_TYPES = ("STRING", "LIST")  
+    FUNCTION = "generate_string_and_list"
     CATEGORY = "utils"
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
             name = kwargs.get(f"sampler_{i+1}")
             if name and name != "none": selected.append(name)
-        return (", ".join(selected),)
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class SchedulerGeneratorNode:
     @classmethod
@@ -155,7 +157,7 @@ class SchedulerGeneratorNode:
         schedulers = get_scheduler_list()
         inputs = {"required": {f"scheduler_{i+1}": (schedulers, {"default": "none"}) for i in range(10)}}
         return inputs
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ("STRING", "LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     def generate_string(self, **kwargs):
@@ -163,7 +165,9 @@ class SchedulerGeneratorNode:
         for i in range(10):
             name = kwargs.get(f"scheduler_{i+1}")
             if name and name != "none": selected.append(name)
-        return (", ".join(selected),)
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class ModelGeneratorNode:
     @classmethod
@@ -171,8 +175,7 @@ class ModelGeneratorNode:
         models = get_model_list()
         inputs = {"required": {f"model_{i+1}": (models, {"default": "none"}) for i in range(10)}}
         return inputs
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("MODEL_STRING",)
+    RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     def generate_string(self, **kwargs):
@@ -180,7 +183,9 @@ class ModelGeneratorNode:
         for i in range(10):
             name = kwargs.get(f"model_{i+1}")
             if name and name != "none": selected.append(name)
-        return (", ".join(selected),)
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class DiffusionModelGeneratorNode:
     @classmethod
@@ -188,8 +193,7 @@ class DiffusionModelGeneratorNode:
         models = get_diffusion_model_file_list()
         inputs = {"required": {f"diff_model_{i+1}": (models, {"default": "none"}) for i in range(10)}} 
         return inputs
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("DIFF_MODEL_STRING",)
+    RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     def generate_string(self, **kwargs):
@@ -197,7 +201,9 @@ class DiffusionModelGeneratorNode:
         for i in range(10):
             name = kwargs.get(f"diff_model_{i+1}")
             if name and name != "none": selected.append(name)
-        return (", ".join(selected),)
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class AnyAdapterNode:
     @classmethod
@@ -280,18 +286,18 @@ class VAEGeneratorNode:
             "required": {f"vae_{i+1}": (vaes, {"default": "none"}) for i in range(10)}
         }
         return inputs
-
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
-
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
             name = kwargs.get(f"vae_{i+1}")
             if name and name != "none":
                 selected.append(name)
-        return (", ".join(selected),)  
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class TextEncoderGeneratorNode:
     @classmethod
@@ -302,7 +308,7 @@ class TextEncoderGeneratorNode:
         }
         return inputs
 
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
 
@@ -312,7 +318,9 @@ class TextEncoderGeneratorNode:
             name = kwargs.get(f"text_enc_{i+1}")
             if name and name != "none":
                 selected.append(name)
-        return (", ".join(selected),)
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class VAESelectorNode:
     @classmethod
@@ -443,26 +451,27 @@ class LORASelectorNode:
             )
         return inputs
 
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ("STRING", "LIST") 
     FUNCTION = "generate_string"
     CATEGORY = "utils"
 
     def generate_string(self, **kwargs):
         parts = []
+        lora_list = [] 
         for i in range(10):
             # Full path from the dropdown
             path = kwargs.get(f"lora_{i+1}")
             weight = kwargs.get(f"weight_{i+1}")
-
             if not path or path == "none":
                 continue
-
             # Take only the file name without extension
             name_without_ext = os.path.splitext(os.path.basename(path))[0]
             weight_str = f"{float(weight):.2f}"
-            parts.append(f"<lora:{name_without_ext}:{weight_str}>")
-
-        return (", ".join(parts),)
+            lora_string = f"<lora:{name_without_ext}:{weight_str}>"
+            parts.append(lora_string) 
+            lora_list.append(lora_string) 
+        string_output = ", ".join(parts)  
+        return (string_output, lora_list)
 
 class ClipSkipSliderNode:
     """

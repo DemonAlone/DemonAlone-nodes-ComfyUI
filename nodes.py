@@ -140,7 +140,7 @@ class SamplerGeneratorNode:
         inputs = {"required": {f"sampler_{i+1}": (samplers, {"default": "none"}) for i in range(10)}}
         return inputs
     RETURN_TYPES = ("STRING", "LIST")  
-    FUNCTION = "generate_string_and_list"
+    FUNCTION = "generate_string"
     CATEGORY = "utils"
     def generate_string(self, **kwargs):
         selected = []

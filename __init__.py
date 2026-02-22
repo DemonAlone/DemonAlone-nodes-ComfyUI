@@ -27,6 +27,11 @@ from .nodes import (
     DA_Base_KSampler,
     DA_Enhanced_KSampler,
     LoadImageWithMetadataNode,
+    MyXYZHelper,
+    MyXYGridAccumulator,
+    MyXYZSuperStacker,
+    ListCreaterNode,
+    CountListNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -58,6 +63,11 @@ NODE_CLASS_MAPPINGS = {
     "DA_Base_KSampler": DA_Base_KSampler,
     "DA_Enhanced_KSampler": DA_Enhanced_KSampler,
     "LoadImageWithMetadataNode": LoadImageWithMetadataNode,
+    "MyXYZHelper": MyXYZHelper,
+    "MyXYGridAccumulator": MyXYGridAccumulator,
+    "MyXYZSuperStacker": MyXYZSuperStacker,
+    "ListCreaterNode":ListCreaterNode,
+    "CountListNode" : CountListNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -88,5 +98,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ShiftSliderNode": "Shift Slider",
     "DA_Base_KSampler": "DA_Base_KSampler",
     "DA_Enhanced_KSampler": "DA_Enhanced_KSampler",
-    "LoadImageWithMetadataNode": "Load Image With Metadata"
+    "LoadImageWithMetadataNode": "Load Image With Metadata",
+    "MyXYZHelper": "MyXYZHelper",
+    "MyXYGridAccumulator": "MyXYGridAccumulator",
+    "MyXYZSuperStacker": "MyXYZSuperStacker",
+    "ListCreaterNode": "List Creater",
+    "CountListNode": "Count List",
 }

@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import comfy
 from pathlib import Path
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageDraw, ImageFont
 import nodes
 import json
 import hashlib
@@ -16,6 +16,11 @@ from pathlib import Path
 from datetime import datetime
 from PIL.ExifTags import TAGS, GPSTAGS, IFD         
 from PIL.PngImagePlugin import PngImageFile
+from comfy_execution.graph_utils import GraphBuilder
+from comfy_execution.graph import ExecutionBlocker
+import re
+import torchvision.transforms as transforms
+import time
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -1271,4 +1276,244 @@ class LoadImageWithMetadataNode:
             return f"Invalid image file: {image}"
         return True
 
-   
+#feedbackNode, MyXYZHelper, MyXYGridAccumulator,  MyXYZSuperStacker nodes based on nodes from  https://github.com/kenjiqq/qq-nodes-comfyui
+# --- BASE CLASS FOR PREVIEW ---
+class FeedbackNode:
+    def __init__(self):
+        self.output_dir = folder_paths.get_temp_directory()
+        self.type = "temp"
+
+    def preview_images(self, images, filename_prefix="MyXYZ"):
+        if not images or len(images) == 0:
+            return []
+        
+        # Get save parameters from the first image
+        full_output_folder, filename, counter, subfolder, filename_prefix = folder_paths.get_save_image_path(
+            filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0])
+        
+        results = list()
+        for image in images:
+            # Convert tensor to array for PIL
+            i = 255. * image.cpu().numpy()
+            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+            file = f"{filename}_{counter:05}_.png"
+            img.save(os.path.join(full_output_folder, file), compress_level=4)
+            results.append({
+                "filename": file,
+                "subfolder": subfolder,
+                "type": self.type
+            })
+            counter += 1
+        return results
+
+# --- 1. HELPER ---
+class MyXYZHelper:
+    _last_index = -1
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "row_list": ("LIST",),
+                "column_list": ("LIST",),
+                "page_list": ("LIST",),
+                "index": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+            },
+            "optional": {
+                "row_prefix": ("STRING", {"default": ""}),
+                "column_prefix": ("STRING", {"default": ""}),
+                "page_prefix": ("STRING", {"default": ""}),
+                "font_size": ("INT", {"default": 50}),
+                "grid_gap": ("INT", {"default": 20}),
+            }
+        }
+
+    RETURN_TYPES = ("AXIS_VALUE", "AXIS_VALUE", "AXIS_VALUE", "XYZ_GRID_CONTROL")
+    RETURN_NAMES = ("row_value", "column_value", "page_value", "XYZ_GRID_CONTROL")
+    FUNCTION = "run"
+    CATEGORY = "Utils"
+
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        return float("NaN")
+
+    def run(self, row_list, column_list, page_list, index, **kwargs):
+        force_reset = (index == 0) or (index < self._last_index)
+        self._last_index = index
+
+        len_x, len_y, len_z = len(column_list), len(row_list), len(page_list)
+        total_per_page = len_x * len_y
+        
+        z_idx = (index // total_per_page) % len_z
+        adj_idx = index % total_per_page
+        row_idx = (adj_idx // len_x) % len_y
+        col_idx = adj_idx % len_x
+
+        r_pre = kwargs.get('row_prefix', "")
+        c_pre = kwargs.get('column_prefix', "")
+        p_pre = kwargs.get('page_prefix', "")
+
+        row_ann = ";".join([f"{r_pre}: {str(x)}" if r_pre else str(x) for x in row_list])
+        col_ann = ";".join([f"{c_pre}: {str(y)}" if c_pre else str(y) for y in column_list])
+        page_label = f"{p_pre}: {str(page_list[z_idx])}" if p_pre else str(page_list[z_idx])
+
+        XYZ_GRID_CONTROL = (
+            total_per_page, 
+            0 if force_reset else adj_idx, 
+            row_ann, 
+            col_ann, 
+            len_x, 
+            kwargs.get('font_size', 50), 
+            kwargs.get('grid_gap', 20),
+            page_label,
+            z_idx,
+            len_z,
+            0 if force_reset else index
+        )
+
+        return (row_list[row_idx], column_list[col_idx], page_list[z_idx], XYZ_GRID_CONTROL)
+
+# --- 2. ACCUMULATOR---
+class MyXYGridAccumulator(FeedbackNode):
+    image_batch = torch.Tensor()
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "images": ("IMAGE",),
+                "XYZ_GRID_CONTROL": ("XYZ_GRID_CONTROL",),
+                "show_previews": ("BOOLEAN", {"default": True}),
+            },
+            "hidden": {"unique_id": "UNIQUE_ID"}
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("images",)
+    FUNCTION = "run"
+    CATEGORY = "Utils"
+
+    def run(self, images, XYZ_GRID_CONTROL, show_previews, unique_id):
+        count, reset_val, row_txt, col_txt, x_size, f_size, gap, z_label, *_ = XYZ_GRID_CONTROL
+        
+        if reset_val == 0:
+            MyXYGridAccumulator.image_batch = images
+        else:
+            if MyXYGridAccumulator.image_batch.numel() == 0:
+                MyXYGridAccumulator.image_batch = images
+            else:
+                MyXYGridAccumulator.image_batch = torch.cat((
+                    MyXYGridAccumulator.image_batch, 
+                    images.to(MyXYGridAccumulator.image_batch.device)
+                ), dim=0)
+
+        curr_num = MyXYGridAccumulator.image_batch.shape[0]
+
+        if curr_num < count:
+            ui_res = []
+            if show_previews:
+                preview_list = [MyXYGridAccumulator.image_batch[i] for i in range(curr_num)]
+                ui_res = self.preview_images(preview_list)
+            return {"result": (ExecutionBlocker(None),), "ui": {"images": ui_res}}
+        
+        else:
+            page_imgs = MyXYGridAccumulator.image_batch[:count]
+            MyXYGridAccumulator.image_batch = torch.Tensor()
+
+            ui_res = []
+            if show_previews:
+                ui_res = self.preview_images([page_imgs[i] for i in range(count)])
+
+            graph = GraphBuilder()
+            ann = graph.node("GridAnnotation", row_texts=row_txt, column_texts=col_txt, font_size=f_size)
+            grid = graph.node("ImagesGridByColumns", images=page_imgs, annotation=ann.out(0), max_columns=x_size, gap=gap)
+            p_ann = graph.node("GridAnnotation", row_texts=" ", column_texts=z_label, font_size=int(f_size*1.5))
+            final = graph.node("ImagesGridByColumns", images=grid.out(0), annotation=p_ann.out(0), max_columns=1, gap=0)
+            
+            return {"result": (final.out(0),), "ui": {"images": ui_res}, "expand": graph.finalize()}
+
+# --- 3. SUPER STACKER (final batch) ---
+class MyXYZSuperStacker:
+    storage = []
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "XYZ_GRID_CONTROL": ("XYZ_GRID_CONTROL",),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("images",)
+    FUNCTION = "stack"
+    CATEGORY = "Utils"
+
+    def stack(self, image, XYZ_GRID_CONTROL):
+        *_, z_idx, total_z, g_index = XYZ_GRID_CONTROL
+        
+        if g_index == 0:
+            MyXYZSuperStacker.storage = []
+
+        if len(MyXYZSuperStacker.storage) == z_idx:
+            MyXYZSuperStacker.storage.append(image)
+
+        if len(MyXYZSuperStacker.storage) >= total_z:
+            all_pages = torch.cat(MyXYZSuperStacker.storage, dim=0)
+            MyXYZSuperStacker.storage = [] 
+            return (all_pages,)
+        else:
+            return (ExecutionBlocker(None),)
+
+class ListCreaterNode:
+    """
+    Splits the input multiline text by the specified delimiter 
+    and returns a list of strings.
+    
+    Supports escaped sequences, for example "\n" → newline.
+    """
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "Separator": ("STRING", {"default": ","}),
+                "Text": ("STRING", {"multiline": True}),
+            }
+        }
+
+    RETURN_TYPES = ("LIST",)
+    FUNCTION = "split_text"
+    CATEGORY = "utility/text"
+
+    def split_text(self, Text: str, Separator: str):
+        # Logic for the "\n" separator
+        if Separator == r"\n":
+            sep = "\n"
+        else:
+            sep = Separator
+
+        # Splitting the string; if you want to support multiple characters,
+        # use re.split(r'[{},]'.format(re.escape(sep)), Text)
+        parts = Text.split(sep)
+        cleaned = [p.strip().replace('\n', ' ') for p in parts]
+
+        return (cleaned,)
+        
+class CountListNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "input_list": ("LIST",)
+            }
+        }
+
+    RETURN_TYPES = ("INT",)
+    FUNCTION = "get_length"
+
+    CATEGORY = "Utils"
+
+    def get_length(self, input_list):
+        length = len(input_list)
+        return (length,)

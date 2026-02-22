@@ -15,7 +15,7 @@ from PIL.JpegImagePlugin import JpegImageFile
 from pathlib import Path
 from datetime import datetime
 from PIL.ExifTags import TAGS, GPSTAGS, IFD         
-from PIL.PngImagePlugin import PngImageFile  
+from PIL.PngImagePlugin import PngImageFile
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -46,11 +46,14 @@ def get_text_encoder_list():
 
 def get_lora_list():
     """
-    List of all LORA files from the `loras/` folder.
-    The full path will be used as the value in the dropdown menu.
+    Return a list of all LoRA files located in the `loras/` folder,
+    prepended with two placeholder entries:
+    `"none"`       – used when nothing is chosen, simply skips this slot
+    `"Empty_value"`– used during tests that need an empty / space result
+    The full path from the folder‑search will be stored in the dropdowns.
     """
-    loras = folder_paths.get_filename_list("loras")      # <-- full path
-    return ["none"] + loras
+    loras = folder_paths.get_filename_list("loras")  # full path
+    return ["none", "Empty_value"] + loras
     
 def build_metadata(image_path: str):
     if not Path(image_path).is_file():
@@ -139,7 +142,7 @@ class SamplerGeneratorNode:
         samplers = get_sampler_list()
         inputs = {"required": {f"sampler_{i+1}": (samplers, {"default": "none"}) for i in range(10)}}
         return inputs
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ("STRING", "LIST")  
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     def generate_string(self, **kwargs):
@@ -147,7 +150,9 @@ class SamplerGeneratorNode:
         for i in range(10):
             name = kwargs.get(f"sampler_{i+1}")
             if name and name != "none": selected.append(name)
-        return (", ".join(selected),)
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class SchedulerGeneratorNode:
     @classmethod
@@ -155,7 +160,7 @@ class SchedulerGeneratorNode:
         schedulers = get_scheduler_list()
         inputs = {"required": {f"scheduler_{i+1}": (schedulers, {"default": "none"}) for i in range(10)}}
         return inputs
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ("STRING", "LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     def generate_string(self, **kwargs):
@@ -163,7 +168,9 @@ class SchedulerGeneratorNode:
         for i in range(10):
             name = kwargs.get(f"scheduler_{i+1}")
             if name and name != "none": selected.append(name)
-        return (", ".join(selected),)
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class ModelGeneratorNode:
     @classmethod
@@ -171,8 +178,7 @@ class ModelGeneratorNode:
         models = get_model_list()
         inputs = {"required": {f"model_{i+1}": (models, {"default": "none"}) for i in range(10)}}
         return inputs
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("MODEL_STRING",)
+    RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     def generate_string(self, **kwargs):
@@ -180,7 +186,9 @@ class ModelGeneratorNode:
         for i in range(10):
             name = kwargs.get(f"model_{i+1}")
             if name and name != "none": selected.append(name)
-        return (", ".join(selected),)
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class DiffusionModelGeneratorNode:
     @classmethod
@@ -188,8 +196,7 @@ class DiffusionModelGeneratorNode:
         models = get_diffusion_model_file_list()
         inputs = {"required": {f"diff_model_{i+1}": (models, {"default": "none"}) for i in range(10)}} 
         return inputs
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("DIFF_MODEL_STRING",)
+    RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     def generate_string(self, **kwargs):
@@ -197,7 +204,9 @@ class DiffusionModelGeneratorNode:
         for i in range(10):
             name = kwargs.get(f"diff_model_{i+1}")
             if name and name != "none": selected.append(name)
-        return (", ".join(selected),)
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class AnyAdapterNode:
     @classmethod
@@ -280,18 +289,18 @@ class VAEGeneratorNode:
             "required": {f"vae_{i+1}": (vaes, {"default": "none"}) for i in range(10)}
         }
         return inputs
-
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
-
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
             name = kwargs.get(f"vae_{i+1}")
             if name and name != "none":
                 selected.append(name)
-        return (", ".join(selected),)  
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class TextEncoderGeneratorNode:
     @classmethod
@@ -302,7 +311,7 @@ class TextEncoderGeneratorNode:
         }
         return inputs
 
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
 
@@ -312,7 +321,9 @@ class TextEncoderGeneratorNode:
             name = kwargs.get(f"text_enc_{i+1}")
             if name and name != "none":
                 selected.append(name)
-        return (", ".join(selected),)
+        string_output = ", ".join(selected)
+        list_output = selected  
+        return (string_output, list_output)
 
 class VAESelectorNode:
     @classmethod
@@ -433,36 +444,56 @@ class LORASelectorNode:
     def INPUT_TYPES(cls):
         loras = get_lora_list()
         inputs = {"required": {}}
+
         for i in range(10):
-            # Dropdown for the full path of a LoRA file
+            # Dropdown – full path to a LoRA file (or the placeholders)
             inputs["required"][f"lora_{i+1}"] = (loras, {"default": "none"})
-            # Corresponding weight input
+            # Weight for the selected LoRA
             inputs["required"][f"weight_{i+1}"] = (
                 "FLOAT",
-                {"default": 1.0, "min": 0.00, "max": 10.00, "step": 0.01},
+                {
+                    "default": 1.0,
+                    "min": 0.00,
+                    "max": 10.00,
+                    "step": 0.01,
+                },
             )
         return inputs
 
-    RETURN_TYPES = ("STRING",)
+    # Output: a string that can be used in prompts, and a LIST of the tags
+    RETURN_TYPES = ("STRING", "LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
 
     def generate_string(self, **kwargs):
-        parts = []
+        parts = []      # will become the comma‑separated string output
+        lora_list = []  # separate list that may contain empty items
+
         for i in range(10):
-            # Full path from the dropdown
-            path = kwargs.get(f"lora_{i+1}")
+            path   = kwargs.get(f"lora_{i+1}")
             weight = kwargs.get(f"weight_{i+1}")
 
+            # --- 0. Nothing selected ---------------------------------------
             if not path or path == "none":
                 continue
 
-            # Take only the file name without extension
+            # --- 1. Special “Empty_value” item -----------------------------
+            if path == "Empty_value":
+                # Insert an empty string / space (no actual LoRA tag will appear)
+                parts.append("")          # nothing is added to the final string
+                lora_list.append("")      # but a placeholder remains in the list
+                continue
+
+            # --- 2. Normal LoRA --------------------------------------------
             name_without_ext = os.path.splitext(os.path.basename(path))[0]
             weight_str = f"{float(weight):.2f}"
-            parts.append(f"<lora:{name_without_ext}:{weight_str}>")
+            lora_tag = f"<lora:{name_without_ext}:{weight_str}>"
 
-        return (", ".join(parts),)
+            parts.append(lora_tag)
+            lora_list.append(lora_tag)
+
+        string_output = ", ".join(parts).strip()
+        return (string_output, lora_list)
 
 class ClipSkipSliderNode:
     """

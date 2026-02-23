@@ -216,7 +216,6 @@ class DiffusionModelGeneratorNode:
 class AnyAdapterNode:
     @classmethod
     def INPUT_TYPES(cls):
-        # Switched from "required" to "optional" – this node can accept any type.
         return {"optional": {"input_any": ("*",)}}
 
     RETURN_TYPES = ("*",)
@@ -1517,3 +1516,41 @@ class CountListNode:
     def get_length(self, input_list):
         length = len(input_list)
         return (length,)
+        
+class AnytoIntegerAdapterNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"optional": {"input_any": ("*",)}}
+
+    RETURN_TYPES = ("INT",)
+    FUNCTION = "adapt"
+    CATEGORY = "utils"
+
+    def adapt(self, input_any):
+        """
+        Converts the input data to an integer. If conversion is impossible, returns None
+        """
+        try:
+            return (int(input_any),)
+        except (ValueError, TypeError):
+            print(f"Cannot convert '{input_any}' to an integer.")
+            return (None,)
+            
+class AnytoFloatAdapterNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"optional": {"input_any": ("*",)}}
+
+    RETURN_TYPES = ("FLOAT",)
+    FUNCTION = "adapt"
+    CATEGORY = "utils"
+
+    def adapt(self, input_any):
+        """
+        Converts the input data to an integer. If conversion is impossible, returns None
+        """
+        try:
+            return (float(input_any),)
+        except (ValueError, TypeError):
+            print(f"Cannot convert '{input_any}' to an integer.")
+            return (None,)

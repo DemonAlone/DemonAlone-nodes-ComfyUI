@@ -32,6 +32,8 @@ from .nodes import (
     MyXYZSuperStacker,
     ListCreaterNode,
     CountListNode,
+    AnytoIntegerAdapterNode,
+    AnytoFloatAdapterNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -68,6 +70,8 @@ NODE_CLASS_MAPPINGS = {
     "MyXYZSuperStacker": MyXYZSuperStacker,
     "ListCreaterNode":ListCreaterNode,
     "CountListNode" : CountListNode,
+    "AnytoIntegerAdapterNode": AnytoIntegerAdapterNode,
+    "AnytoFloatAdapterNode": AnytoFloatAdapterNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -104,4 +108,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MyXYZSuperStacker": "MyXYZSuperStacker",
     "ListCreaterNode": "List Creater",
     "CountListNode": "Count List",
+    "AnytoIntegerAdapterNode": "Any to Integer",
+    "AnytoFloatAdapterNode": "Any to Float",
 }

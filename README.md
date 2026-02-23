@@ -13,4 +13,4 @@ LoadImageWithMetadataNode is based on CImageLoadWithMetadata from https://github
 feedbackNode, MyXYZHelper, MyXYGridAccumulator,  MyXYZSuperStacker nodes based on nodes from  https://github.com/kenjiqq/qq-nodes-comfyui
 
 
-Created with the assistance of Google Gemini and GPT-OSS.
+Created with the assistance of Google Gemini, Qwen2.5-Coder, GPT-OSS.

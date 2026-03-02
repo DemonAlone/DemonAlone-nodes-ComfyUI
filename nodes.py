@@ -691,7 +691,8 @@ class ImageResizeNode:
         """
         Resizes both an image and a mask (if provided) using the same target size.
         If only one of them is connected, that one will be resized while the other
-        stays untouched.  Returns None for the output that was not given.
+        stays untouched.  If an input is missing, the corresponding output tensor
+        will be empty (filled with zeros).
         """
 
         has_image = image is not None
@@ -784,7 +785,10 @@ class ImageResizeNode:
 
             image_out = img.permute(0, 2, 3, 1)   # B,H,W,C
         else:
-            image_out = None
+            # Create an empty tensor for image_out
+            batch_size = source_tensor.shape[0]
+            channels = 3 if has_image else 1  # If there's no image input, use one channel
+            image_out = torch.zeros(batch_size, new_height, new_width, channels)
 
         # --------- 4. Resize mask ----------
         if has_mask:
@@ -811,64 +815,61 @@ class ImageResizeNode:
             # --- Return mask in format (B,H,W) ---
             mask_out = msk.squeeze(1)      # remove channel 1
         else:
-            mask_out = None
+            # Create an empty tensor for mask_out
+            batch_size = source_tensor.shape[0]
+            mask_out = torch.zeros(batch_size, new_height, new_width)
 
         return image_out, mask_out, new_width, new_height
 
+
 class ResizeMethodControlNode:
     """
-    Outputs the chosen resize method.
+    Remote control unit with resizing method.
+    Sends the selected value as a combo type for compatibility.
     Can be connected to the 'method' input of ImageResizeNode.
     """
+    #Define the list once to avoid duplication.
+    METHODS = ["stretch", "keep proportion", "fill / crop", "pad"]
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                # Same enumeration as in ImageResizeNode
-                "method": ([
-                    "stretch",
-                    "keep proportion",
-                    "fill / crop",
-                    "pad"
-                ],),
+                "method": (cls.METHODS,),
             }
         }
 
-    RETURN_TYPES = ("STRING",)          # one output element – string
-    FUNCTION    = "set"                 # name of the method to be called
+    RETURN_TYPES = (METHODS,) 
+    RETURN_NAMES = ("method",)
+    FUNCTION    = "get_method"
     CATEGORY    = "utils"
 
-    def set(self, method: str):
-        """Return the selected method as a single output."""
+    def get_method(self, method: str):
         return (method,)
+
+
 
 class ResizeInterpolationControlNode:
     """
     Outputs the chosen interpolation type.
     Can be connected to the 'interpolation' input of ImageResizeNode.
     """
+    INTERPOLATION = ["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos"]
+    
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                # List of all options from ImageResizeNode
-                "interpolation": ([
-                    "nearest",
-                    "bilinear",
-                    "bicubic",
-                    "area",
-                    "nearest-exact",
-                    "lanczos"
-                ],),
+                "interpolation": (cls.INTERPOLATION,),
             }
         }
 
-    RETURN_TYPES = ("STRING",)          # one output element – string
-    FUNCTION    = "set"                 # name of the method to be called
+    RETURN_TYPES = (INTERPOLATION,)
+    RETURN_NAMES = ("interpolation",)
+    FUNCTION    = "get_interpolation"
     CATEGORY    = "utils"
 
-    def set(self, interpolation: str):
-        """Return the selected interpolation type as a single output."""
+    def get_interpolation(self, interpolation: str):
         return (interpolation,)
 
 class AnyConcatNode:
@@ -879,8 +880,8 @@ class AnyConcatNode:
             # Delimiter: always a text field, can be changed manually
             "required": {"delimiter": ("STRING", {"default": " "})},
 
-            # text1…text5 are only connectors. Their type "*" means “any value”, but in the UI they appear as empty slots without a text field.
-            "optional": {f"text{i}": ("*",) for i in range(1, 6)},
+            # text1…text5 are only connectors.
+            "optional": {f"text{i}": ("STRING", {"forceInput": True}) for i in range(1, 6)},
         }
 
     RETURN_TYPES = ("STRING",)
@@ -892,7 +893,6 @@ class AnyConcatNode:
         kwargs contains only those slots that were actually connected.
         If a slot was not connected, it simply is absent from the dict.
         """
-        # Convert everything to string (so you can concatenate numbers and other types) and remove empty/None values.
         texts = [str(v) for v in kwargs.values() if v]
         return (delimiter.join(texts),)
 

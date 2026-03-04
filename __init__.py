@@ -34,6 +34,9 @@ from .nodes import (
     CountListNode,
     AnytoIntegerAdapterNode,
     AnytoFloatAdapterNode,
+    SamplerSelectorFromStringNode,
+    SchedulerSelectorFromStringNode,
+    ListRerouteNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -72,6 +75,9 @@ NODE_CLASS_MAPPINGS = {
     "CountListNode" : CountListNode,
     "AnytoIntegerAdapterNode": AnytoIntegerAdapterNode,
     "AnytoFloatAdapterNode": AnytoFloatAdapterNode,
+    "SamplerSelectorFromStringNode": SamplerSelectorFromStringNode,
+    "SchedulerSelectorFromStringNode": SchedulerSelectorFromStringNode,
+    "ListRerouteNode": ListRerouteNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -110,4 +116,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "CountListNode": "Count List",
     "AnytoIntegerAdapterNode": "Any to Integer",
     "AnytoFloatAdapterNode": "Any to Float",
+    "SamplerSelectorFromStringNode": "Sampler Selector From String",
+    "SchedulerSelectorFromStringNode": "Scheduler Selector From String",
+    "ListRerouteNode": "List Reroute",
 }

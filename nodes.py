@@ -1605,39 +1605,22 @@ class ListRerouteNode:
     def reroute(self, input_list):
         return (input_list,)
 
-class DiffusionModelSelectorFromStringNode:
+class StringToAnyNode:
+    """
+    Universal Bridge: Takes a string and returns it as type '*'
+    """
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "model_input": ("STRING", {"default": ""})},
+                "input_string": ("STRING", {"default": ""}),
+            }
         }
-            # 1. Strip any extra whitespace and surrounding quotes if they are present
-    RETURN_TYPES = (folder_paths.get_filename_list("diffusion_models"),)
-    RETURN_NAMES = ("model_name",)   
+
+    RETURN_TYPES = ("*",)
+    RETURN_NAMES = ("any_output",)
+    FUNCTION = "convert"
     CATEGORY = "utils"
-    FUNCTION = "process"
 
-    def process(self, model_input: str):
-        # 1. Strip any extra whitespace and surrounding quotes if they are present
-        model_name = model_input.strip().strip('"').strip("'")
-
-        if not model_name or model_name.lower() == "none":
-            raise ValueError("Empty model name")
-
-        # 2. Get the current list from ComfyUI
-        available = folder_paths.get_filename_list("diffusion_models")
-
-        # 3. Check: ComfyUI stores paths exactly as they appear in the dropdown menu.
-        if model_name not in available:
-            # In case the system uses forward slashes / while you entered backslashes \
-            alt_name = model_name.replace("\\", "/")
-            if alt_name in available:
-                model_name = alt_name
-            else:
-                raise ValueError(
-                    f"'{model_name}' not found. Make sure the path matches what is displayed in the dropdown."
-                )
-
-        return (model_name,)
-        
+    def convert(self, input_string):
+        return (input_string,)

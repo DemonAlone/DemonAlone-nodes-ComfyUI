@@ -37,6 +37,7 @@ from .nodes import (
     SamplerSelectorFromStringNode,
     SchedulerSelectorFromStringNode,
     ListRerouteNode,
+    DiffusionModelSelectorFromStringNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -78,6 +79,7 @@ NODE_CLASS_MAPPINGS = {
     "SamplerSelectorFromStringNode": SamplerSelectorFromStringNode,
     "SchedulerSelectorFromStringNode": SchedulerSelectorFromStringNode,
     "ListRerouteNode": ListRerouteNode,
+    "DiffusionModelSelectorFromStringNode": DiffusionModelSelectorFromStringNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -119,4 +121,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "SamplerSelectorFromStringNode": "Sampler Selector From String",
     "SchedulerSelectorFromStringNode": "Scheduler Selector From String",
     "ListRerouteNode": "List Reroute",
+    "DiffusionModelSelectorFromStringNode": "Diffusion Model Selector From String"
 }

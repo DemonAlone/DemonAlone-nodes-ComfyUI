@@ -821,7 +821,6 @@ class ImageResizeNode:
 
         return image_out, mask_out, new_width, new_height
 
-
 class ResizeMethodControlNode:
     """
     Remote control unit with resizing method.
@@ -846,8 +845,6 @@ class ResizeMethodControlNode:
 
     def get_method(self, method: str):
         return (method,)
-
-
 
 class ResizeInterpolationControlNode:
     """
@@ -1327,7 +1324,7 @@ class MyXYZHelper:
             }
         }
 
-    RETURN_TYPES = ("AXIS_VALUE", "AXIS_VALUE", "AXIS_VALUE", "XYZ_GRID_CONTROL")
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "XYZ_GRID_CONTROL")
     RETURN_NAMES = ("row_value", "column_value", "page_value", "XYZ_GRID_CONTROL")
     FUNCTION = "run"
     CATEGORY = "Utils"
@@ -1491,9 +1488,6 @@ class ListCreaterNode:
             sep = "\n"
         else:
             sep = Separator
-
-        # Splitting the string; if you want to support multiple characters,
-        # use re.split(r'[{},]'.format(re.escape(sep)), Text)
         parts = Text.split(sep)
         cleaned = [p.strip().replace('\n', ' ') for p in parts]
 
@@ -1554,3 +1548,79 @@ class AnytoFloatAdapterNode:
         except (ValueError, TypeError):
             print(f"Cannot convert '{input_any}' to an integer.")
             return (None,)
+
+class SamplerSelectorFromStringNode:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "sampler_name_str": ("STRING", {"default": "euler"}),
+            }
+        }
+
+    RETURN_TYPES = (comfy.samplers.KSampler.SAMPLERS,)
+    RETURN_NAMES = ("sampler_name",)
+    FUNCTION = "get_names"
+    CATEGORY = "utils"
+
+    def get_names(self, sampler_name_str):
+        if sampler_name_str not in comfy.samplers.KSampler.SAMPLERS:
+            print(f"Warning: Sampler '{sampler_name_str}' not found. Fallback to euler.")
+            return ("euler",)
+        return (sampler_name_str,)
+
+class SchedulerSelectorFromStringNode:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "scheduler_str": ("STRING", {"default": "normal"}),
+            }
+        }
+
+    RETURN_TYPES = (comfy.samplers.KSampler.SCHEDULERS,)
+    RETURN_NAMES = ("scheduler",)
+    FUNCTION = "get_names"
+    CATEGORY = "utils"
+
+    def get_names(self, scheduler_str):
+        if scheduler_str not in comfy.samplers.KSampler.SCHEDULERS:
+            return ("normal",)
+        return (scheduler_str,)
+        
+class ListRerouteNode:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "input_list": ("LIST",),
+            },
+        }
+
+    RETURN_TYPES = ("LIST",)
+    FUNCTION = "reroute"
+
+    CATEGORY = "utils"
+
+    def reroute(self, input_list):
+        return (input_list,)
+
+class StringToAnyNode:
+    """
+    Universal Bridge: Takes a string and returns it as type '*'
+    """
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "input_string": ("STRING", {"default": ""}),
+            }
+        }
+
+    RETURN_TYPES = ("*",)
+    RETURN_NAMES = ("any_output",)
+    FUNCTION = "convert"
+    CATEGORY = "utils"
+
+    def convert(self, input_string):
+        return (input_string,)

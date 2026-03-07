@@ -1624,3 +1624,46 @@ class StringToAnyNode:
 
     def convert(self, input_string):
         return (input_string,)
+
+class XYZConflictValidatorAndSwitch:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "output_type": (["STRING", "INT", "FLOAT", "*"],),
+                "global_val": ("*",), 
+            },
+            "optional": {
+                "row": ("*",),
+                "column": ("*",),
+                "pages": ("*",),
+            }
+        }
+
+    RETURN_TYPES = ("*",)
+    RETURN_NAMES = ("output",)
+    FUNCTION = "execute"
+    CATEGORY = "utils/XYZ"
+
+    def execute(self, output_type, global_val, **kwargs):
+        # 1. Multiple choice check (Axis conflict)
+        active_inputs = {k: v for k, v in kwargs.items() if v is not None}
+        
+        if len(active_inputs) > 1:
+            raise ValueError(f"⚠️ XYZ Conflict: Few active parameters of the same type: {list(active_inputs.keys())}")
+
+        # Choice value (XYZ или Global)
+        raw_result = active_inputs[next(iter(active_inputs))] if active_inputs else global_val
+
+        # 2. Type casting according to the selection in the menu
+        try:
+            if output_type == "INT":
+                return (int(float(raw_result)),)
+            elif output_type == "FLOAT":
+                return (float(raw_result),)
+            elif output_type == "STRING":
+                return (str(raw_result),)
+            else:
+                return (raw_result,)
+        except (ValueError, TypeError):
+            raise TypeError(f"⚠️ XYZ Type Mismatch: Unable to turn '{raw_result}' into a {output_type}")

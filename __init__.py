@@ -38,6 +38,7 @@ from .nodes import (
     SchedulerSelectorFromStringNode,
     ListRerouteNode,
     StringToAnyNode,
+    XYZConflictValidatorAndSwitch,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -80,6 +81,7 @@ NODE_CLASS_MAPPINGS = {
     "SchedulerSelectorFromStringNode": SchedulerSelectorFromStringNode,
     "ListRerouteNode": ListRerouteNode,
     "StringToAnyNode": StringToAnyNode,
+    "XYZConflictValidatorAndSwitch": XYZConflictValidatorAndSwitch,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -121,5 +123,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "SamplerSelectorFromStringNode": "Sampler Selector From String",
     "SchedulerSelectorFromStringNode": "Scheduler Selector From String",
     "ListRerouteNode": "List Reroute",
-    "StringToAnyNode": "String To Any"
+    "StringToAnyNode": "String To Any",
+    "XYZConflictValidatorAndSwitch": "XYZ ConflictValidator And Switch",
 }

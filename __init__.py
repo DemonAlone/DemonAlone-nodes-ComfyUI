@@ -39,6 +39,7 @@ from .nodes import (
     ListRerouteNode,
     StringToAnyNode,
     XYZConflictValidatorAndSwitch,
+    ListCombinerNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -82,6 +83,7 @@ NODE_CLASS_MAPPINGS = {
     "ListRerouteNode": ListRerouteNode,
     "StringToAnyNode": StringToAnyNode,
     "XYZConflictValidatorAndSwitch": XYZConflictValidatorAndSwitch,
+    "ListCombinerNode": ListCombinerNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -125,4 +127,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ListRerouteNode": "List Reroute",
     "StringToAnyNode": "String To Any",
     "XYZConflictValidatorAndSwitch": "XYZ ConflictValidator And Switch",
+    "ListCombinerNode": "List Combiner",
 }

@@ -1667,3 +1667,20 @@ class XYZConflictValidatorAndSwitch:
                 return (raw_result,)
         except (ValueError, TypeError):
             raise TypeError(f"⚠️ XYZ Type Mismatch: Unable to turn '{raw_result}' into a {output_type}")
+
+class ListCombinerNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "list_a": ("LIST",),
+                "list_b": ("LIST",) 
+            }
+        }
+
+    RETURN_TYPES = ("LIST",)
+    FUNCTION = "join_lists"
+    CATEGORY = "List Operations" 
+
+    def join_lists(self, list_a, list_b):
+        return (list_a + list_b,)

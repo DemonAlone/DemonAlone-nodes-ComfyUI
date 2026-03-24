@@ -40,6 +40,7 @@ from .nodes import (
     StringToAnyNode,
     XYZConflictValidatorAndSwitch,
     ListCombinerNode,
+    BooleanSwitchNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -84,6 +85,7 @@ NODE_CLASS_MAPPINGS = {
     "StringToAnyNode": StringToAnyNode,
     "XYZConflictValidatorAndSwitch": XYZConflictValidatorAndSwitch,
     "ListCombinerNode": ListCombinerNode,
+    "BooleanSwitchNode": BooleanSwitchNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -128,4 +130,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "StringToAnyNode": "String To Any",
     "XYZConflictValidatorAndSwitch": "XYZ ConflictValidator And Switch",
     "ListCombinerNode": "List Combiner",
+    "BooleanSwitchNode": "Boolean Switch",
 }

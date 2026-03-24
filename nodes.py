@@ -1684,3 +1684,26 @@ class ListCombinerNode:
 
     def join_lists(self, list_a, list_b):
         return (list_a + list_b,)
+
+class BooleanSwitchNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {        
+                "condition": ("BOOLEAN",)
+            },
+            "optional": {          
+                "on_true": ("*",), 
+                "on_false": ("*",)
+            }
+        }
+
+    RETURN_TYPES = ("*",)    
+    FUNCTION = "switch"      
+    CATEGORY = "logic"    
+
+    def switch(self, condition: bool, on_true=None, on_false=None):
+        if condition:
+            return (on_true if on_true is not None else None,)
+        else:
+            return (on_false if on_false is not None else None,)                

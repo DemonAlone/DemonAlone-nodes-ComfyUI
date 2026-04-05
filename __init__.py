@@ -41,6 +41,7 @@ from .nodes import (
     XYZConflictValidatorAndSwitch,
     ListCombinerNode,
     BooleanSwitchNode,
+    SaveImageNoMetaNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -86,6 +87,7 @@ NODE_CLASS_MAPPINGS = {
     "XYZConflictValidatorAndSwitch": XYZConflictValidatorAndSwitch,
     "ListCombinerNode": ListCombinerNode,
     "BooleanSwitchNode": BooleanSwitchNode,
+    "SaveImageNoMetaNode": SaveImageNoMetaNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -131,4 +133,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "XYZConflictValidatorAndSwitch": "XYZ ConflictValidator And Switch",
     "ListCombinerNode": "List Combiner",
     "BooleanSwitchNode": "Boolean Switch",
+    "SaveImageNoMetaNode": "Save Image With No Meta",
 }

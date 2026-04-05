@@ -4,6 +4,7 @@ import os
 import torch
 import torch.nn.functional as F
 import comfy
+import time
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageOps, ImageDraw, ImageFont
@@ -20,7 +21,6 @@ from comfy_execution.graph_utils import GraphBuilder
 from comfy_execution.graph import ExecutionBlocker
 import re
 import torchvision.transforms as transforms
-import time
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -1706,4 +1706,121 @@ class BooleanSwitchNode:
         if condition:
             return (on_true if on_true is not None else None,)
         else:
-            return (on_false if on_false is not None else None,)                
+            return (on_false if on_false is not None else None,)
+
+class SaveImageNoMetaNode:
+    """
+    Saves an image without workflow/metadata.
+    Supports %date% placeholder which is replaced by yyyy-mm-dd.
+    Always saves the file inside the `output/<relative path>` folder.
+    An index is added automatically (00001, 00002 ...).
+    """
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "path": ("STRING",
+                         {"default": "ComfyUI",
+                          "tooltip": "Relative path inside `output`. Use %date% for yyyy-mm-dd."}),
+                "preview": ("BOOLEAN", {"default": True}),
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "save"
+    CATEGORY = "ImageSaver"
+    OUTPUT_NODE = True
+
+    def _ensure_rgb_uint8(self, img):
+        if isinstance(img, torch.Tensor):
+            img = img.cpu().numpy()
+        
+        # If a batch is received (N, H, W, C), take the first frame
+        if img.ndim == 4:
+            img = img[0]
+        while img.ndim > 3:
+            img = img[0]
+        if img.ndim == 2:                # H,W → RGB
+            img = np.stack([img] * 3, axis=-1)
+        elif img.shape[-1] == 1:         # H,W,1 → RGB
+            img = np.concatenate([img] * 3, axis=-1)
+        if img.dtype.kind in "fc":       # float → 0-255
+            img = np.clip(img * 255.0, 0, 255)
+        else:
+            img = np.clip(img, 0, 255)
+        return img.astype(np.uint8)
+
+    def _unique_name(self, target_path: Path) -> Path:
+        """Returns the path with an incremented index if the file already exists."""
+        if not target_path.exists():
+            return target_path
+        stem = target_path.stem
+        suffix = target_path.suffix if target_path.suffix else ".png"
+        counter = 1
+        while True:
+            new_name = f"{stem}_{counter:05d}{suffix}"
+            candidate = target_path.parent / new_name
+            if not candidate.exists():
+                return candidate
+            counter += 1
+
+    def save(self, image, path: str, preview: bool):
+        if not path:
+            raise ValueError("Save path is not specified")
+
+       # Replace %date% with the current date in the format yyyy-mm-dd
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        processed_path = path.replace("%date%", current_date)
+        # ------------------------------------
+            
+        # 1. Define the root of the output folder
+        # In ComfyUI, it's better to use the standard output directory logic
+        # But staying with your implementation:
+        root_dir = Path(os.getcwd())
+        output_base = root_dir/ "output"
+        # Correction: using your original variable name
+        output_base = Path(os.getcwd()) / "output"
+        
+        # 2. Formulate the target file path inside 'output'
+        clean_relative_path = processed_path.lstrip("/\\").lstrip("./")
+        target_file_path = output_base / clean_relative_path
+        
+        # If no extension is provided, add .png
+        if target_file_path.suffix == "":
+            target_file_path = target_file_path.with_suffix(".png")
+            
+        # 3. Generate a unique name (with index)
+        unique_path = self._unique_name(target_file_path)
+        
+        # 4. Save the image
+        img_np = self._ensure_rgb_uint8(image)
+        pil_img = Image.fromarray(img_np)
+        pil_img.info.clear()  # Remove all metadata (workflow, etc.)
+        unique_path.parent.mkdir(parents=True, exist_ok=True)
+        pil_img.save(str(unique_path))
+        
+        # 5. Formulate the response for UI (preview)
+        if preview:
+            try:
+                subfolder = str(unique_path.parent.relative_to(output_base))
+            except ValueError:
+                subfolder = ""
+                
+            if subfolder in [".", ""]:
+                subfolder = ""
+            else:
+                subfolder = subfolder.replace(os.sep, '/')
+                
+            return {
+                "ui": {
+                    "images": [
+                        {
+                            "filename": unique_path.name,
+                            "subfolder": subfolder,
+                            "type": "output"
+                        }
+                    ]
+                }
+            }
+        return {}            

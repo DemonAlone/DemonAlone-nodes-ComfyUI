@@ -1712,6 +1712,7 @@ class SaveImageNoMetaNode:
     """
     Saves an image without workflow/metadata.
     Supports %date% placeholder which is replaced by yyyy-mm-dd.
+    Supports png and jpg formats.
     Always saves the file inside the `output/<relative path>` folder.
     An index is added automatically (00001, 00002 ...).
     """
@@ -1723,6 +1724,7 @@ class SaveImageNoMetaNode:
                 "path": ("STRING",
                          {"default": "ComfyUI",
                           "tooltip": "Relative path inside `output`. Use %date% for yyyy-mm-dd."}),
+                "format": (["png", "jpg"],),
                 "preview": ("BOOLEAN", {"default": True}),
             }
         }
@@ -1741,10 +1743,15 @@ class SaveImageNoMetaNode:
             img = img[0]
         while img.ndim > 3:
             img = img[0]
+            
+        # Ensure 3 channels (RGB) - important for JPG which doesn't support Alpha
         if img.ndim == 2:                # H,W → RGB
             img = np.stack([img] * 3, axis=-1)
         elif img.shape[-1] == 1:         # H,W,1 → RGB
             img = np.concatenate([img] * 3, axis=-1)
+        elif img.shape[-1] == 4:         # RGBA → RGB (JPG doesn't support transparency)
+            img = img[:, :, :3]
+
         if img.dtype.kind in "fc":       # float → 0-255
             img = np.clip(img * 255.0, 0, 255)
         else:
@@ -1765,40 +1772,44 @@ class SaveImageNoMetaNode:
                 return candidate
             counter += 1
 
-    def save(self, image, path: str, preview: bool):
+    def save(self, image, path: str, format: str, preview: bool):
         if not path:
             raise ValueError("Save path is not specified")
-
-       # Replace %date% with the current date in the format yyyy-mm-dd
+            
+        # Replace %date% with the current date in the format yyyy-mm-dd
         current_date = datetime.now().strftime("%Y-%m-%d")
         processed_path = path.replace("%date%", current_date)
-        # ------------------------------------
-            
+        
         # 1. Define the root of the output folder
-        # In ComfyUI, it's better to use the standard output directory logic
-        # But staying with your implementation:
-        root_dir = Path(os.getcwd())
-        output_base = root_dir/ "output"
-        # Correction: using your original variable name
         output_base = Path(os.getcwd()) / "output"
         
         # 2. Formulate the target file path inside 'output'
         clean_relative_path = processed_path.lstrip("/\\").lstrip("./")
         target_file_path = output_base / clean_relative_path
         
-        # If no extension is provided, add .png
-        if target_file_path.suffix == "":
-            target_file_path = target_file_path.with_suffix(".png")
-            
+        # Handle extension logic: replace existing extension with chosen format
+        if target_file_path.suffix != "" and target_file_path.suffix[1:].lower() != format:
+            target_file_path = target_file_path.with_suffix(f".{format}")
+        elif target_file_path.suffix == "":
+            target_file_path = target_file_path.with_suffix(f".{format}")
+
         # 3. Generate a unique name (with index)
         unique_path = self._unique_name(target_file_path)
-        
+            
         # 4. Save the image
         img_np = self._ensure_rgb_uint8(image)
         pil_img = Image.fromarray(img_np)
-        pil_img.info.clear()  # Remove all metadata (workflow, etc.)
+        
+        # Remove all metadata (workflow, etc.)
+        pil_img.info.clear()  
+        
         unique_path.parent.mkdir(parents=True, exist_ok=True)
-        pil_img.save(str(unique_path))
+        
+        # Save with format specific settings
+        if format.lower() in ["jpg", "jpeg"]:
+            pil_img.save(str(unique_path), format="JPEG", quality=95)
+        else:
+            pil_img.save(str(unique_path), format="PNG")
         
         # 5. Formulate the response for UI (preview)
         if preview:
@@ -1823,4 +1834,4 @@ class SaveImageNoMetaNode:
                     ]
                 }
             }
-        return {}            
+        return {}

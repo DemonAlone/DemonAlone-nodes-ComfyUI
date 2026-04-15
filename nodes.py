@@ -1690,7 +1690,7 @@ class BooleanSwitchNode:
     def INPUT_TYPES(cls):
         return {
             "required": {        
-                "condition": ("BOOLEAN",)
+                "state": ("BOOLEAN",)
             },
             "optional": {          
                 "on_true": ("*",), 
@@ -1702,8 +1702,8 @@ class BooleanSwitchNode:
     FUNCTION = "switch"      
     CATEGORY = "logic"    
 
-    def switch(self, condition: bool, on_true=None, on_false=None):
-        if condition:
+    def switch(self, state: bool, on_true=None, on_false=None):
+        if state:
             return (on_true if on_true is not None else None,)
         else:
             return (on_false if on_false is not None else None,)

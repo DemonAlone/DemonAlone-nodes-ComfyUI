@@ -141,6 +141,125 @@ def build_metadata(image_path: str):
 
     return img, prompt, metadata
     
+def create_grid_annotation(
+    image: Image.Image,
+    column_texts: list = None,
+    row_texts: list = None,
+    font: ImageFont.FreeTypeFont = None,
+    text_color: tuple = (255, 255, 255),
+    bg_color: tuple = (0, 0, 0),
+    
+    ) -> Image.Image:
+    """
+    Adds annotations (text above and left) to the image.
+    Returns a new image with fields for annotations.
+    """
+    # If no column or row texts provided, return original image
+    if column_texts is None and row_texts is None:
+        return image
+
+    # Try to use a specific font if not provided
+    if font is None:
+        try:
+            font = ImageFont.truetype("arial.ttf", 20)
+        except:
+            font = ImageFont.load_default()
+
+    # Calculate the height needed for text in columns
+    draw = ImageDraw.Draw(image)
+    col_height = 0
+    if column_texts:
+    # Calculate the height needed for text in columns
+        for txt in column_texts:
+            bbox = draw.textbbox((0, 0), txt, font=font)
+            col_height = max(col_height, bbox[3] - bbox[1])
+        col_height += 10  # Add small spacing between text
+
+    # Calculate the width needed for rows
+    row_width = 0
+    if row_texts:
+        for txt in row_texts:
+            bbox = draw.textbbox((0, 0), txt, font=font)
+            row_width = max(row_width, bbox[2] - bbox[0])
+        row_width += 10
+    # Get original image dimensions
+    orig_w, orig_h = image.size
+    # Get original image dimensions
+
+    new_w = orig_w + row_width
+    new_h = orig_h + col_height
+
+    # Create a new blank image with background color
+    new_img = Image.new("RGB", (new_w, new_h), bg_color)
+    # Create a new blank image with background color
+    new_img.paste(image, (row_width, col_height))
+
+    draw = ImageDraw.Draw(new_img)
+
+    # Create a new blank image with background color
+    if column_texts:
+        # Create a new blank image with background color
+        col_w = orig_w // len(column_texts)
+        for i, txt in enumerate(column_texts):
+            bbox = draw.textbbox((0, 0), txt, font=font)
+            text_w = bbox[2] - bbox[0]
+            x = row_width + i * col_w + (col_w - text_w) // 2
+            y = (col_height - (bbox[3] - bbox[1])) // 2
+            draw.text((x, y), txt, fill=text_color, font=font)
+
+    # Create a new blank image with background color
+    if row_texts:
+        row_h = orig_h // len(row_texts)
+        for i, txt in enumerate(row_texts):
+            bbox = draw.textbbox((0, 0), txt, font=font)
+            text_h = bbox[3] - bbox[1]
+            y = col_height + i * row_h + (row_h - text_h) // 2
+            x = (row_width - (bbox[2] - bbox[0])) // 2
+            draw.text((x, y), txt, fill=text_color, font=font)
+
+    return new_img
+
+def images_grid_by_columns(
+    images: list,
+    max_columns: int,
+    gap: int = 0,
+    bg_color: tuple = (0, 0, 0),
+    ) -> Image.Image:
+    """
+    Creates a grid layout from a list of PIL images.
+    max_columns - maximum number of columns in the grid
+    gap - spacing between columns
+    bg_color - background color for the grid
+    """
+    if not images:
+        raise ValueError("List of images is empty")
+
+    n = len(images)
+    columns = min(max_columns, n) # Limit to maximum allowed columns
+    rows = (n + columns - 1) // columns # Limit to maximum allowed columns
+
+    # Limit to maximum allowed columns
+    cell_w = max(img.width for img in images)
+    cell_h = max(img.height for img in images)
+
+    total_w = columns * cell_w + (columns - 1) * gap
+    total_h = rows * cell_h + (rows - 1) * gap
+    # Limit to maximum allowed columns
+    grid = Image.new("RGB", (total_w, total_h), bg_color)
+    
+    # Place each image into its appropriate position in the grid
+    for idx, img in enumerate(images):
+        row = idx // columns
+        col = idx % columns
+        x = col * (cell_w + gap)
+        y = row * (cell_h + gap)
+        # Center the image within its cell
+        offset_x = (cell_w - img.width) // 2
+        offset_y = (cell_h - img.height) // 2
+        grid.paste(img, (x + offset_x, y + offset_y))
+
+    return grid
+    
 class SamplerGeneratorNode:
     @classmethod
     def INPUT_TYPES(cls):
@@ -1402,7 +1521,7 @@ class MyXYGridAccumulator(FeedbackNode):
                     MyXYGridAccumulator.image_batch, 
                     images.to(MyXYGridAccumulator.image_batch.device)
                 ), dim=0)
-
+        # ---- If the page is not yet filled ----
         curr_num = MyXYGridAccumulator.image_batch.shape[0]
 
         if curr_num < count:
@@ -1411,22 +1530,69 @@ class MyXYGridAccumulator(FeedbackNode):
                 preview_list = [MyXYGridAccumulator.image_batch[i] for i in range(curr_num)]
                 ui_res = self.preview_images(preview_list)
             return {"result": (ExecutionBlocker(None),), "ui": {"images": ui_res}}
-        
-        else:
-            page_imgs = MyXYGridAccumulator.image_batch[:count]
-            MyXYGridAccumulator.image_batch = torch.Tensor()
+        # ---- Page is filled, constructing the grid ----
+        page_imgs = MyXYGridAccumulator.image_batch[:count]
+        MyXYGridAccumulator.image_batch = torch.Tensor()  # Clear for the next page
 
-            ui_res = []
-            if show_previews:
-                ui_res = self.preview_images([page_imgs[i] for i in range(count)])
+        # 1. Convert tensors to PIL.Image
+        pil_images = []
+        for i in range(count):
+            img_tensor = page_imgs[i]
+            # Tensor shape is [H, W, C] with values 0..1
+            np_img = (255. * img_tensor.cpu().numpy()).astype(np.uint8)
+            pil_images.append(Image.fromarray(np_img))
 
-            graph = GraphBuilder()
-            ann = graph.node("GridAnnotation", row_texts=row_txt, column_texts=col_txt, font_size=f_size)
-            grid = graph.node("ImagesGridByColumns", images=page_imgs, annotation=ann.out(0), max_columns=x_size, gap=gap)
-            p_ann = graph.node("GridAnnotation", row_texts=" ", column_texts=z_label, font_size=int(f_size*1.5))
-            final = graph.node("ImagesGridByColumns", images=grid.out(0), annotation=p_ann.out(0), max_columns=1, gap=0)
-            
-            return {"result": (final.out(0),), "ui": {"images": ui_res}, "expand": graph.finalize()}
+        # 2. Prepare font
+        try:
+            # Attempt to load a standard system font
+            font = ImageFont.truetype("arial.ttf", f_size)
+        except:
+            font = ImageFont.load_default()
+
+        # 3. Build the main image grid (rows × columns)
+        grid_img = images_grid_by_columns(pil_images, max_columns=x_size, gap=gap)
+
+        # 4. Add row and column annotations
+        row_texts = row_txt.split(";") if row_txt else []
+        column_texts = col_txt.split(";") if col_txt else []
+
+        if row_texts or column_texts:
+            grid_img = create_grid_annotation(
+                grid_img,
+                column_texts=column_texts,
+                row_texts=row_texts,
+                font=font,
+            )
+
+        # 5. Add the page header (z_label) as a separate line on top
+        if z_label:
+            # Create a temporary 1x1 grid containing only the label image
+            # and add the annotation with z_label
+            # To maintain proportions, we could just draw text above the existing grid,
+            # but following the original pattern: create a 1x1 grid with an annotation-header
+            try:
+                font_big = ImageFont.truetype("arial.ttf", int(f_size * 1.5))
+            except:
+                font_big = ImageFont.load_default()
+            grid_img = create_grid_annotation(
+                grid_img,
+                column_texts=[z_label],
+                row_texts=[" "],  # Empty space on the left
+                font=font_big,
+            )
+
+        # 6. Convert back to ComfyUI tensor format
+        final_np = np.array(grid_img).astype(np.float32) / 255.0
+        final_tensor = torch.from_numpy(final_np).unsqueeze(0)  # [1, H, W, C]
+
+        # 7. Preview (if enabled)
+        ui_res = []
+        if show_previews:
+            # Display individual images of the current page (not the final grid)
+            ui_res = self.preview_images([page_imgs[i] for i in range(count)])
+
+        return {"result": (final_tensor,), "ui": {"images": ui_res}}
+
 
 # --- 3. SUPER STACKER (final batch) ---
 class MyXYZSuperStacker:

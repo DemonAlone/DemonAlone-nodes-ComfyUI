@@ -1,5 +1,4 @@
 This repository bundles a set of lightweight utility nodes for ComfyUI that were originally crafted to support XYZ‑plot pipelines but are broadly useful in any workflow.
-For using xyz-plot, you need to install https://github.com/LEv145/images-grid-comfy-plugin.
 
 ## Credits:
 TextConcatNode is based on TextConcat from [mikey_nodes](https://github.com/bash-j/mikey_nodes)
@@ -12,5 +11,4 @@ LoadImageWithMetadataNode is based on CImageLoadWithMetadata from https://github
 
 feedbackNode, MyXYZHelper, MyXYGridAccumulator,  MyXYZSuperStacker nodes based on nodes from  https://github.com/kenjiqq/qq-nodes-comfyui
 
-
-Created with the assistance of Google Gemini/Gemma, Qwen2.5-Coder, GPT-OSS.
+Created with the assistance of Google Gemini/Gemma, Qwen2.5-Coder, GPT-OSS, DeepSeek.

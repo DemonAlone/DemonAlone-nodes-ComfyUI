@@ -21,6 +21,7 @@ from comfy_execution.graph_utils import GraphBuilder
 from comfy_execution.graph import ExecutionBlocker
 import re
 import torchvision.transforms as transforms
+import latent_preview
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -1258,28 +1259,23 @@ class DA_Enhanced_KSampler:
                 "negative": ("CONDITIONING", ),
                 "latent_image": ("LATENT", ),
                 "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "preview_freq": ("INT", {"default": 1, "min": 1, "max": 100, "tooltip": "How often to update the preview (e.g., 2 for every other step)."})
             }}
-
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "sample"
     CATEGORY = "Sampling"
-
     # ----------Helper method----------
     def _apply_shift(self, model: "MODEL", shift: float, multiplier: float = 1.0):
         m = model.clone()
         import comfy.model_sampling
         sampling_base   = comfy.model_sampling.ModelSamplingDiscreteFlow
         sampling_type   = comfy.model_sampling.CONST
-
         class ModelSamplingAdvanced(sampling_base, sampling_type): pass
-
         model_sampling = ModelSamplingAdvanced(model.model.model_config)
         model_sampling.set_parameters(shift=shift, multiplier=multiplier)
-
         m.add_object_patch("model_sampling", model_sampling)
         return m
-    # -------------------------------------------
-
+        
     def sample(self,
                model: "MODEL",
                seed: int,
@@ -1291,21 +1287,70 @@ class DA_Enhanced_KSampler:
                negative: "CONDITIONING",
                latent_image: "LATENT",
                denoise: float = 1.0,
-               shift: float = 0.0):
+               shift: float = 0.0,
+               preview_freq: int = 1):
+                    
         if shift:
             try:
                 model = self._apply_shift(model, shift)
             except Exception as e:
                 print(f"[DA_Enhanced_KSampler] error applying Model_Shift: {e}")
-
-        return nodes.common_ksampler(
+        # 1. Data preparation (almost identical to common_ksampler)
+        device = comfy.model_management.get_torch_device()
+        latent_samples = latent_image["samples"]
+        latent_samples = comfy.sample.fix_empty_latent_channels(model, latent_samples)
+        
+        # Noise preparation
+        batch_inds = latent_image.get("batch_index", None)
+        noise = comfy.sample.prepare_noise(latent_samples, seed, batch_inds)
+        
+        noise_mask = latent_image.get("noise_mask", None)
+        
+        # 2. Create a custom callback function for preview rendering
+        #    The logic for "preview every Nth step" is implemented here
+        preview_format = "JPEG"
+        previewer = latent_preview.get_previewer(device, model.model.latent_format)
+        pbar = comfy.utils.ProgressBar(steps)
+        
+        def custom_callback(step, x0, x, total_steps):
+            # Render preview only if the current step (step) is a multiple of preview_freq
+            # or on the final step
+            if (step + 1) % preview_freq == 0 or (step + 1) == total_steps:
+                preview_bytes = None
+                if previewer:
+                    preview_bytes = previewer.decode_latent_to_preview_image(preview_format, x0)
+                # Update progress bar with new image
+                pbar.update_absolute(step + 1, total_steps, preview_bytes)
+            else:
+                # Update progress bar only, without preview
+                pbar.update_absolute(step + 1, total_steps, None)
+        # 3. Run sampling directly, passing our custom callback
+        samples = comfy.sample.sample(
             model,
-            seed, steps, cfg,
-            sampler_name, scheduler,
-            positive, negative,
-            latent_image,
-            denoise=denoise
+            noise,
+            steps,
+            cfg,
+            sampler_name,
+            scheduler,
+            positive,
+            negative,
+            latent_samples,
+            denoise=denoise,
+            disable_noise=False,
+            start_step=None,
+            last_step=None,
+            force_full_denoise=False,
+            noise_mask=noise_mask,
+            callback=custom_callback,
+            disable_pbar=False,
+            seed=seed
         )
+        
+        # 4. Format output data
+        out = latent_image.copy()
+        out["samples"] = samples
+        return (out,)
+
 
 #This node is based on CImageLoadWithMetadata from https://github.com/crystian/ComfyUI-Crystools
 class LoadImageWithMetadataNode:
@@ -1592,7 +1637,6 @@ class MyXYGridAccumulator(FeedbackNode):
             ui_res = self.preview_images([page_imgs[i] for i in range(count)])
 
         return {"result": (final_tensor,), "ui": {"images": ui_res}}
-
 
 # --- 3. SUPER STACKER (final batch) ---
 class MyXYZSuperStacker:

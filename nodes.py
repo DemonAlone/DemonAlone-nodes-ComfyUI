@@ -2045,3 +2045,57 @@ class SaveImageNoMetaNode:
                 }
             }
         return {}
+
+class DA_BusInNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "optional": {f"input{i}": ("*",) for i in range(1, 11)}
+        }
+   
+    RETURN_TYPES = ("BUS_PIPE",)
+    RETURN_NAMES = ("bus_pipe",)
+    
+    FUNCTION = "execute"
+    CATEGORY = "System/Bus"
+    DESCRIPTION = "Aggregates up to 10 connections into a single bus pipe. Preserves positions of empty inputs."
+    
+    def execute(self, **kwargs):
+        # Initializing a fixed list of 10 elements set to None
+        # This guarantees that input1 is always at index 0, input2 at 1 and so on.
+        bus_data = [None] * 10 
+        
+        for i in range(1, 11):
+            key = f"input{i}"
+            # Check for key existence. If it exists (even if value is None), 
+            if key in kwargs:
+                bus_data[i-1] = kwargs[key]
+        
+        return (tuple(bus_data),)
+
+class DA_BusOutNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"bus_pipe": ("BUS_PIPE",)}
+        }
+    
+    RETURN_TYPES = tuple(["*"] * 10)
+    RETURN_NAMES = tuple([f"output{i+1}" for i in range(10)])
+
+    OUTPUT_IS_LIST = (False,) * 10
+    
+    FUNCTION = "execute"
+    CATEGORY = "System/Bus"
+    DESCRIPTION = "Unpacks the bus pipe back into up to 10 outputs."
+    
+    def execute(self, bus_pipe):
+        # Convert to tuple type for safety
+        if not isinstance(bus_pipe, tuple):
+            bus_pipe = tuple(bus_pipe)
+        
+        outputs = []
+        for i in range(10):
+            item = bus_pipe[i] if i < len(bus_pipe) else None
+            outputs.append(item)
+        return tuple(outputs)

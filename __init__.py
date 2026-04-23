@@ -42,6 +42,8 @@ from .nodes import (
     ListCombinerNode,
     BooleanSwitchNode,
     SaveImageNoMetaNode,
+    DA_BusInNode,
+    DA_BusOutNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -88,6 +90,8 @@ NODE_CLASS_MAPPINGS = {
     "ListCombinerNode": ListCombinerNode,
     "BooleanSwitchNode": BooleanSwitchNode,
     "SaveImageNoMetaNode": SaveImageNoMetaNode,
+    "DA_BusInNode": DA_BusInNode,
+    "DA_BusOutNode": DA_BusOutNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -134,4 +138,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ListCombinerNode": "List Combiner",
     "BooleanSwitchNode": "Boolean Switch",
     "SaveImageNoMetaNode": "Save Image With No Meta",
+    "DA_BusInNode": "BusIn",
+    "DA_BusOutNode": "BusOut",
 }

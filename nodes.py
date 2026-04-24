@@ -270,6 +270,7 @@ class SamplerGeneratorNode:
     RETURN_TYPES = ("STRING", "LIST")  
     FUNCTION = "generate_string"
     CATEGORY = "utils"
+    DESCRIPTION = "Generates a comma-separated string and list of any selected samplers from up to 10 inputs. Useful for dynamically constructing sampler lists based on user selection before feeding them into sampling nodes."
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
@@ -288,6 +289,7 @@ class SchedulerGeneratorNode:
     RETURN_TYPES = ("STRING", "LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
+    DESCRIPTION = "Generates a comma-separated string and list of any selected schedulers from up to 10 inputs. Used to dynamically assemble scheduler configurations from multiple source nodes before applying them to the sampling process."
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
@@ -306,6 +308,7 @@ class ModelGeneratorNode:
     RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
+    DESCRIPTION = "Aggregates standard diffusion model weights from up to 10 inputs. Generates a combined list and comma-separated string of selected checkpoint files for flexible pipeline configuration."
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
@@ -324,6 +327,7 @@ class DiffusionModelGeneratorNode:
     RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
+    DESCRIPTION = "Collects custom or pre-processed diffusion model file paths from multiple sources (up to 10 inputs). Outputs a consolidated list and string representation for seamless integration into multi-model workflows."
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
@@ -341,7 +345,7 @@ class AnyAdapterNode:
     RETURN_TYPES = ("*",)
     FUNCTION = "adapt"
     CATEGORY = "utils"
-
+    DESCRIPTION = "A flexible pass-through node that accepts any input type. It safely forwards data downstream or returns a clean None output if the input is unconnected, ensuring pipeline stability without breaking custom workflows."
     def adapt(self, input_any=None):
         """
         If the input is not connected, `input_any` will be None.
@@ -369,8 +373,8 @@ class CheckpointSelectorNode:
         "STRING",
     )
     RETURN_NAMES = ("ckpt_name", "ckpt_name_str")
-    CATEGORY = "utils"   # Folder in UI
-
+    CATEGORY = "utils"
+    DESCRIPTION = "Retrieves checkpoint model names from the ComfyUI checkpoints folder and outputs both the filename tuple (for combo menus) and its string representation, allowing dynamic model selection in utility chains."
     FUNCTION = "get_ckpt_name"
 
     def get_ckpt_name(self, ckpt_name):
@@ -416,6 +420,7 @@ class VAEGeneratorNode:
     RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
+    DESCRIPTION = "Aggregates up to 10 selected VAE models into a single comma-separated string and a corresponding list. Designed to dynamically build a chain of VAEs for processing workflows that require multiple decode/encode stages."
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
@@ -438,6 +443,7 @@ class TextEncoderGeneratorNode:
     RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
+    DESCRIPTION = "Consolidates up to 10 selected text encoders (CLIP models) into a unified string output and list. Enables the dynamic assembly of multi-stage conditioning pipelines by combining various encoder variants."
 
     def generate_string(self, **kwargs):
         selected = []
@@ -468,8 +474,8 @@ class VAESelectorNode:
         "STRING",                               # plain text output
     )
     RETURN_NAMES = ("vae_name", "vae_name_str")
-    CATEGORY = "utils"     # subfolder in UI
-
+    CATEGORY = "utils"
+    DESCRIPTION = "Selects a single VAE model from the available list. Outputs both the model path (for direct connection to nodes like Load VAE) and a plain text string representation of the selection for use in other utility nodes."
     FUNCTION = "get_vae"
 
     def get_vae(self, vae_name):
@@ -493,7 +499,7 @@ class TextEncoderSelectorNode:
     )
     RETURN_NAMES = ("enc_name", "enc_name_str")
     CATEGORY = "utils"
-
+    DESCRIPTION = "Selects a single Text Encoder (CLIP model) from the installed encoders. Provides both the encoder path compatible with loading nodes and a corresponding string output, enabling flexible routing of conditioning models within the workflow."
     FUNCTION = "get_encoder"
 
     def get_encoder(self, enc_name):
@@ -512,7 +518,8 @@ class StringToIntNode:
     RETURN_TYPES = ("INT",)            # output – integer
     FUNCTION = "convert"
     CATEGORY = "utils"
-
+    DESCRIPTION = "Safely converts a text input string into an integer. Automatically handles parsing errors by logging them and returning 0 as a fallback, ensuring the workflow continues without crashing on invalid numeric strings."
+    
     def convert(self, text_value):
         try:
             return (int(text_value),)
@@ -533,6 +540,7 @@ class StringToFloatNode:
     RETURN_TYPES = ("FLOAT",)          # output – float
     FUNCTION = "convert"
     CATEGORY = "utils"
+    DESCRIPTION = "Converts a text input string into a floating-point number with error handling. If the string cannot be parsed as a valid float, it logs the issue and returns 0.0 to keep the pipeline running smoothly."
 
     def convert(self, text_value):
         try:
@@ -542,7 +550,7 @@ class StringToFloatNode:
             return (0.0,)
 
 class TextConcatNode:
-       # modified node TextConcat from https://github.com/bash-j/mikey_nodes
+    # modified node TextConcat from https://github.com/bash-j/mikey_nodes
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -554,6 +562,7 @@ class TextConcatNode:
     RETURN_TYPES = ("STRING",)
     FUNCTION = "concat"
     CATEGORY = "utils"
+    DESCRIPTION = "Merges up to 5 optional text inputs into a single continuous string, using a configurable delimiter."
 
     def concat(self,
                delimiter,
@@ -588,6 +597,7 @@ class LORASelectorNode:
     RETURN_TYPES = ("STRING", "LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
+    DESCRIPTION = "Aggregates up to 10 LoRA models with individually assigned weights, generating both a formatted prompt string and a structured list. Supports dynamic inclusion of empty values (placeholders) alongside active LoRAs for flexible pipeline construction."
 
     def generate_string(self, **kwargs):
         parts = []      # will become the comma‑separated string output
@@ -636,10 +646,11 @@ class ClipSkipSliderNode:
             }
         }
 
-    RETURN_TYPES = ("INT",)          # single output – integer
+    RETURN_TYPES = ("INT",)
     RETURN_NAMES = ("value",)        # optional – gives the output a name
     FUNCTION = "get_value"           # method that will be invoked
-    CATEGORY = "utils"               # subfolder in UI
+    CATEGORY = "utils"
+    DESCRIPTION = "Outputs an integer clip skip value ranging from -24 to -1. Provides fine-grained control over the depth of CLIP token skipping in diffusion models."
 
     def get_value(self, value):
         """
@@ -650,10 +661,7 @@ class ClipSkipSliderNode:
         return (value,)
 
 class PonyPrefixesNode:
-    
-    
     """
-    
     Score     – 5 variants
         "-"               → None
         "Everything"      → "score_9, score_8_up, score_7_up, score_6_up, score_5_up, "
@@ -717,7 +725,8 @@ class PonyPrefixesNode:
     RETURN_NAMES = ("combined_string",)   # output name
     FUNCTION = "generate"
     CATEGORY = "utils"
-
+    DESCRIPTION = "Dynamically constructs a prompt prefix string containing Pony-specific score, rating, and source tags (e.g., score_9, rating_safe). Combines selected variants into a single comma-separated string for immediate use in text encoding."
+    
     # mappings
     _SCORE_MAP = {
         "Everything":     "score_9, score_8_up, score_7_up, score_6_up, score_5_up, ",
@@ -771,6 +780,7 @@ class ImageResizeNode:
     RETURN_NAMES = ("image_out", "mask_out", "width", "height")
     FUNCTION     = "execute"
     CATEGORY     = "utils"
+    DESCRIPTION = "A versatile utility node for synchronously resizing images and masks. Supports multiple scaling methods (stretch, keep proportion, fill/crop, pad), various interpolation filters, and conditional logic to resize only when necessary. Automatically handles empty outputs if an input tensor is missing."
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -945,7 +955,7 @@ class ResizeMethodControlNode:
     """
     Remote control unit with resizing method.
     Sends the selected value as a combo type for compatibility.
-    Can be connected to the 'method' input of ImageResizeNode.
+    Should be connected to the 'method' input of ImageResizeNode.
     """
     #Define the list once to avoid duplication.
     METHODS = ["stretch", "keep proportion", "fill / crop", "pad"]
@@ -962,6 +972,7 @@ class ResizeMethodControlNode:
     RETURN_NAMES = ("method",)
     FUNCTION    = "get_method"
     CATEGORY    = "utils"
+    DESCRIPTION = "An external controller panel specifically for setting the resizing strategy of ImageResizeNode. Outputs the selected method (stretch, keep proportion, fill/crop, or pad) as a combo parameter to be connected directly to the main node's 'method' input."
 
     def get_method(self, method: str):
         return (method,)
@@ -985,6 +996,7 @@ class ResizeInterpolationControlNode:
     RETURN_NAMES = ("interpolation",)
     FUNCTION    = "get_interpolation"
     CATEGORY    = "utils"
+    DESCRIPTION = "An external controller panel for defining the resampling filter used by ImageResizeNode. Allows remote configuration of interpolation types (nearest, bilinear, bicubic, area, lanczos, etc.) by outputting the selected value to the main node's 'interpolation' input."
 
     def get_interpolation(self, interpolation: str):
         return (interpolation,)
@@ -1004,6 +1016,7 @@ class AnyConcatNode:
     RETURN_TYPES = ("STRING",)
     FUNCTION = "concat"
     CATEGORY = "utils"
+    DESCRIPTION = "Concatenates any number of up to 5 text inputs into a single string using a custom delimiter. Acts as a flexible joiner that automatically ignores unconnected slots, ideal for building dynamic text prompts or combining parameters from various sources."
 
     def concat(self, delimiter: str, **kwargs):
         """
@@ -1016,7 +1029,6 @@ class AnyConcatNode:
 class OptionalCondMergeNode:
     """
     Smart "merge" for conditioning.
-
     - inputs: cond1, cond2, cond3 (optional)
     - output: one merged-conditioning
     """
@@ -1032,9 +1044,10 @@ class OptionalCondMergeNode:
             }
         }
 
-    RETURN_TYPES = ("CONDITIONING",)      # single output
+    RETURN_TYPES = ("CONDITIONING",)
     FUNCTION     = "merge"
-    CATEGORY     = "conditioning"        # UI sub‑folder
+    CATEGORY     = "conditioning"    
+    DESCRIPTION = "Merges 1 to 3 conditioning inputs (text embeddings) into a single output by averaging their weights and layering them element-wise. Automatically calculates the blend weight based on the number of active connections, ensuring seamless integration of multiple conditioning signals without manual scaling."
 
     def merge(self, **kwargs):
         """
@@ -1091,12 +1104,11 @@ class ScaleImageAspectNode:
 
     The `max_side` value has a step of 64 and a maximum of 16384 pixels.
     """
-
     # ── I/O definitions for ComfyUI ───────────────────────────────
 
     RETURN_TYPES = ("IMAGE",)
     RETURN_NAMES = ("image_out",)
-
+    DESCRIPTION  = "Resizes an image to fit within a specified maximum dimension while strictly preserving its aspect ratio. Supports multiple interpolation modes (e.g., bilinear, bicubic, lanczos)"
     FUNCTION     = "execute"
     CATEGORY     = "utils"
 
@@ -1174,6 +1186,7 @@ class MaskDebugNode:
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "debug"
+    DESCRIPTION = "Inspects and reports the tensor shape of a connected mask node in string format. Useful for debugging pipeline issues related to dimension mismatches or verifying input consistency before further processing steps."
 
     def debug(self, mask):
         import torch
@@ -1195,7 +1208,7 @@ class ShiftSliderNode:
 
     RETURN_TYPES = ("FLOAT",)        
     RETURN_NAMES = ("shift",)        
-
+    DESCRIPTION = "Applies a dynamic shift value to the sampling process or subsequent operations."
     FUNCTION = "run"               
     CATEGORY = "utils"      
 
@@ -1239,6 +1252,7 @@ class DA_Base_KSampler:
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "sample"
     CATEGORY = "Sampling"
+    DESCRIPTION = "Executes standard diffusion sampling using the vanilla KSampler implementation"
 
     def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=1.0):
         return nodes.common_ksampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=denoise)
@@ -1264,6 +1278,7 @@ class DA_Enhanced_KSampler:
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "sample"
     CATEGORY = "Sampling"
+    DESCRIPTION = "An advanced KSampler supporting Model Shift (SDE), dynamic noise masking, and customizable preview frequency. Allows users to control how often latent previews are rendered during the sampling process to optimize memory usage and visual feedback."
     # ----------Helper method----------
     def _apply_shift(self, model: "MODEL", shift: float, multiplier: float = 1.0):
         m = model.clone()
@@ -1351,7 +1366,6 @@ class DA_Enhanced_KSampler:
         out["samples"] = samples
         return (out,)
 
-
 #This node is based on CImageLoadWithMetadata from https://github.com/crystian/ComfyUI-Crystools
 class LoadImageWithMetadataNode:
     """Loads an image from the input folder and returns a tensor,
@@ -1382,7 +1396,7 @@ class LoadImageWithMetadataNode:
     # 4 outputs: image, mask, full RAW metadata, and 'clean' set only with parameters
     RETURN_TYPES = ("IMAGE", "MASK", "METADATA_RAW", "METADATA_CLEAN")
     RETURN_NAMES = ("image", "mask", "Metadata RAW", "Metadata Clean")
-
+    DESCRIPTION = "Loads an image from the input directory, applies EXIF orientation correction, and outputs the image tensor along with an alpha mask (if present). Additionally, it provides both full raw metadata and a filtered 'clean' version containing only essential parameters for downstream workflows."
     OUTPUT_NODE = True
     FUNCTION   = "execute"
 
@@ -1492,6 +1506,7 @@ class MyXYZHelper:
     RETURN_NAMES = ("row_value", "column_value", "page_value", "XYZ_GRID_CONTROL")
     FUNCTION = "run"
     CATEGORY = "Utils"
+    DESCRIPTION = "Orchestrates the grid layout by mapping the current execution index to specific row, column, and page values. Dynamically generates annotations (e.g., 'Value: 5') for the XYZ plot headers based on input lists and styling parameters."
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
@@ -1552,6 +1567,7 @@ class MyXYGridAccumulator(FeedbackNode):
     RETURN_NAMES = ("images",)
     FUNCTION = "run"
     CATEGORY = "Utils"
+    DESCRIPTION = "Buffers individual images into a visual grid as the XYZ loop progresses. Handles the accumulation of images per page, renders the preview grid with axis labels when full, and clears the batch upon completion of each slice."
 
     def run(self, images, XYZ_GRID_CONTROL, show_previews, unique_id):
         count, reset_val, row_txt, col_txt, x_size, f_size, gap, z_label, *_ = XYZ_GRID_CONTROL
@@ -1655,6 +1671,7 @@ class MyXYZSuperStacker:
     RETURN_NAMES = ("images",)
     FUNCTION = "stack"
     CATEGORY = "Utils"
+    DESCRIPTION = "Collects all rendered XY pages into a single multi-page image sequence once the full XYZ dataset is generated. Acts as the final aggregation node to output the complete result set for saving or further processing."
 
     def stack(self, image, XYZ_GRID_CONTROL):
         *_, z_idx, total_z, g_index = XYZ_GRID_CONTROL
@@ -1691,6 +1708,7 @@ class ListCreaterNode:
     RETURN_TYPES = ("LIST",)
     FUNCTION = "split_text"
     CATEGORY = "utility/text"
+    DESCRIPTION = "Splits multiline text strings into a list of individual items using a custom delimiter (supports commas, newlines, etc.). Useful for parsing batch configurations or breaking down complex prompts into separate components."
 
     def split_text(self, Text: str, Separator: str):
         # Logic for the "\n" separator
@@ -1714,7 +1732,7 @@ class CountListNode:
 
     RETURN_TYPES = ("INT",)
     FUNCTION = "get_length"
-
+    DESCRIPTION = "Calculates and returns the total number of elements in an input list. Provides a quick way to determine batch sizes, list lengths, or count available inputs within your workflow logic."
     CATEGORY = "Utils"
 
     def get_length(self, input_list):
@@ -1729,7 +1747,8 @@ class AnytoIntegerAdapterNode:
     RETURN_TYPES = ("INT",)
     FUNCTION = "adapt"
     CATEGORY = "utils"
-
+    DESCRIPTION = "Safely converts any compatible input value into an integer. If the conversion fails or is impossible, it returns None without crashing the workflow."
+    
     def adapt(self, input_any):
         """
         Converts the input data to an integer. If conversion is impossible, returns None
@@ -1748,6 +1767,7 @@ class AnytoFloatAdapterNode:
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "adapt"
     CATEGORY = "utils"
+    DESCRIPTION = "Safely converts any compatible input value into a floating-point number. If the conversion fails or is impossible, it returns None to prevent workflow errors."
 
     def adapt(self, input_any):
         """
@@ -1772,6 +1792,7 @@ class SamplerSelectorFromStringNode:
     RETURN_NAMES = ("sampler_name",)
     FUNCTION = "get_names"
     CATEGORY = "utils"
+    DESCRIPTION = "Converts a string input into a valid KSampler sampler object. Automatically validates the input and falls back to 'euler' if an unsupported sampler name is provided, ensuring workflow stability."
 
     def get_names(self, sampler_name_str):
         if sampler_name_str not in comfy.samplers.KSampler.SAMPLERS:
@@ -1792,6 +1813,7 @@ class SchedulerSelectorFromStringNode:
     RETURN_NAMES = ("scheduler",)
     FUNCTION = "get_names"
     CATEGORY = "utils"
+    DESCRIPTION = "Parses a string input to select a compatible KSampler scheduler. Includes basic validation to handle incorrect inputs gracefully by defaulting to the 'normal' scheduler when necessary."
 
     def get_names(self, scheduler_str):
         if scheduler_str not in comfy.samplers.KSampler.SCHEDULERS:
@@ -1809,7 +1831,7 @@ class ListRerouteNode:
 
     RETURN_TYPES = ("LIST",)
     FUNCTION = "reroute"
-
+    DESCRIPTION = "Passes a list input through unchanged. Acts as a connector or placeholder in the graph to manage node connections without altering data content."
     CATEGORY = "utils"
 
     def reroute(self, input_list):
@@ -1831,6 +1853,7 @@ class StringToAnyNode:
     RETURN_NAMES = ("any_output",)
     FUNCTION = "convert"
     CATEGORY = "utils"
+    DESCRIPTION = "Converts a string value into a universal type-compatible output, allowing seamless bridging between different data types."
 
     def convert(self, input_string):
         return (input_string,)
@@ -1854,7 +1877,8 @@ class XYZConflictValidatorAndSwitch:
     RETURN_NAMES = ("output",)
     FUNCTION = "execute"
     CATEGORY = "utils/XYZ"
-
+    DESCRIPTION = "Safeguards the XYZ pipeline against type mismatches by enforcing that only one active parameter exists per execution step. Automatically casts and outputs the current grid value (Row, Column, or Page) as an Int, Float, or String based on configuration."
+    
     def execute(self, output_type, global_val, **kwargs):
         # 1. Multiple choice check (Axis conflict)
         active_inputs = {k: v for k, v in kwargs.items() if v is not None}
@@ -1890,8 +1914,9 @@ class ListCombinerNode:
 
     RETURN_TYPES = ("LIST",)
     FUNCTION = "join_lists"
-    CATEGORY = "List Operations" 
-
+    CATEGORY = "List Operations"
+    DESCRIPTION = "Merges two input lists into a single combined list, preserving the order of elements from both sources. Essential for chaining multiple generated lists (e.g., samplers or encoders) into one cohesive pipeline stage."
+    
     def join_lists(self, list_a, list_b):
         return (list_a + list_b,)
 
@@ -1911,6 +1936,7 @@ class BooleanSwitchNode:
     RETURN_TYPES = ("*",)    
     FUNCTION = "switch"      
     CATEGORY = "logic"    
+    DESCRIPTION = "A conditional routing node that outputs either the 'true' or 'false' input value based on the current boolean state."
 
     def switch(self, state: bool, on_true=None, on_false=None):
         if state:
@@ -1943,6 +1969,7 @@ class SaveImageNoMetaNode:
     FUNCTION = "save"
     CATEGORY = "ImageSaver"
     OUTPUT_NODE = True
+    DESCRIPTION = "Saves images to the output folder without embedding workflow metadata. Supports PNG/JPEG formats, automatic date stamping (%date%), and auto-indexing (e.g., 00001.png) for duplicate files. Always strips EXIF/metadata to ensure clean output files."
 
     def _ensure_rgb_uint8(self, img):
         if isinstance(img, torch.Tensor):

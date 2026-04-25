@@ -115,7 +115,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageResizeNode": "Image and Mask Resize",
     "ResizeMethodControl": "ResizeMethodControl",
     "ResizeInterpolationControlNode": "ResizeInterpolationControl",
-    "AnyConcatNode": "Any Concat",
+    "AnyConcatNode": "String Concat",
     "OptionalCondMergeNode": "Optional Conditioning Merge",
     "ScaleImageAspectNode": "Scale Image",
     "MaskDebugNode": "Mask Debug",

@@ -2126,3 +2126,32 @@ class DA_BusOutNode:
             item = bus_pipe[i] if i < len(bus_pipe) else None
             outputs.append(item)
         return tuple(outputs)
+
+class WanNumFramesNode:
+    RETURN_TYPES = ("INT",)
+    RETURN_NAMES = ("num_frames",)
+    DESCRIPTION  = "Output integer value with strict range constraints (min: 1, max: 10000, step: 4). " 
+    FUNCTION     = "execute"
+    CATEGORY     = "utils"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "num_frames": ("INT", {"default": 49, 
+                                   "min": 1, 
+                                   "max": 10000, 
+                                   "step": 4}), 
+            }
+        }
+
+    def execute(self, num_frames=None):
+        """
+        Returns the integer value provided by the input widget.
+        It acts as a pass-through node for an integer constrained by specific steps.
+        """
+        # Protection against None if the note is connected incorrectly
+        if num_frames is None:
+            return (self.default_value,)
+
+        return (num_frames,)

@@ -405,6 +405,29 @@ class DiffusionModelSelectorNode:
     def get_model(self, model_name):
         return model_name, model_name
 
+class FloatSelectorNode:
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "float": ("FLOAT", {"default": 1.0,
+                                    "min": 0.0,
+                                    "max": 1.0,
+                                    "step": 0.01})
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT",)        
+    RETURN_NAMES = ("float",)        
+    DESCRIPTION = "A simple utility node that outputs a single float value with adjustable range and precision. Useful for creating custom selectors like CFG strength."
+    FUNCTION = "run"               
+    CATEGORY = "utils"      
+
+    def run(self, float):
+       
+        return (float,)      
+
 class VAEGeneratorNode:
     """
     Generator of a list of VAE files.

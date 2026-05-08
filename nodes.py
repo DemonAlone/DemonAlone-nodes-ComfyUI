@@ -22,6 +22,7 @@ from comfy_execution.graph import ExecutionBlocker
 import re
 import torchvision.transforms as transforms
 import latent_preview
+import pickle
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -403,30 +404,7 @@ class DiffusionModelSelectorNode:
     FUNCTION = "get_model"
 
     def get_model(self, model_name):
-        return model_name, model_name
-
-class FloatSelectorNode:
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "float": ("FLOAT", {"default": 1.0,
-                                    "min": 0.0,
-                                    "max": 1.0,
-                                    "step": 0.01})
-            }
-        }
-
-    RETURN_TYPES = ("FLOAT",)        
-    RETURN_NAMES = ("float",)        
-    DESCRIPTION = "A simple utility node that outputs a single float value with adjustable range and precision. Useful for creating custom selectors like CFG strength."
-    FUNCTION = "run"               
-    CATEGORY = "utils"      
-
-    def run(self, float):
-       
-        return (float,)      
+        return model_name, model_name   
 
 class VAEGeneratorNode:
     """
@@ -2178,3 +2156,127 @@ class WanNumFramesNode:
             return (self.default_value,)
 
         return (num_frames,)
+
+class FloatSelectorNode:
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "float": ("FLOAT", {"default": 1.0,
+                                    "min": 0.0,
+                                    "max": 1.0,
+                                    "step": 0.01})
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT",)        
+    RETURN_NAMES = ("float",)        
+    DESCRIPTION = "A simple utility node that outputs a single float value with adjustable range and precision. Useful for creating custom selectors like CFG strength."
+    FUNCTION = "run"               
+    CATEGORY = "utils"      
+
+    def run(self, float):
+       
+        return (float,) 
+        
+class DA_LatentLoader:
+    @classmethod
+    def INPUT_TYPES(cls):
+        output_dir = folder_paths.get_output_directory()
+        files = []
+        for root, _, filenames in os.walk(output_dir):
+            for f in filenames:
+                if f.endswith(('.latent', '.safetensors')):
+                    rel = os.path.relpath(os.path.join(root, f), output_dir).replace("\\", "/")
+                    files.append(rel)
+        if not files:
+            files = ["[No latents found in output]"]
+        return {"required": {"latent_file": (sorted(files),)}}
+    RETURN_TYPES = ("LATENT",)
+    FUNCTION = "load_latent"
+    DESCRIPTION = "Loads previously saved latent tensors (.latent or .safetensors) from the current output directory. Automatically detects and parses both modern JSON-wrapped formats (supporting float32 tensors) and legacy binary formats (pickle/torch/safetensors). Ensures 4D tensor shape compatibility by broadcasting missing dimensions. Logs loaded tensor statistics (shape, min/max/mean) for debugging."
+    CATEGORY = "latent"
+    
+    def load_latent(self, latent_file):
+        if latent_file == "[No latents found in output]":
+            raise FileNotFoundError("No .latent/.safetensors files found in output")
+        full_path = os.path.join(folder_paths.get_output_directory(), latent_file)
+        with open(full_path, "rb") as f:
+            data = f.read()
+        json_start = data.find(b'{')
+        if json_start == -1:
+            return ({"samples": self._legacy_load(data)},)
+        json_end = self._find_json_end(data, json_start)
+        if json_end == -1:
+            raise RuntimeError("Failed to find end of JSON")
+        metadata = json.loads(data[json_start:json_end].decode('utf-8'))
+        if "latent_tensor" in metadata:
+            info = metadata["latent_tensor"]
+            shape = info["shape"]
+            if info["dtype"] != "F32":
+                raise RuntimeError(f"Unsupported dtype: {info['dtype']}")
+            offsets = info["data_offsets"]
+            # Skip spaces after JSON
+            data_start = json_end
+            while data_start < len(data) and data[data_start] in (0x20, 0x0A, 0x0D, 0x09):
+                data_start += 1
+            size = offsets[1] - offsets[0]
+            raw = data[data_start : data_start + size]
+            tensor = torch.frombuffer(bytearray(raw), dtype=torch.float32).reshape(shape).clone()
+            print(f"[LatentLoaderBrowser] {latent_file}: shape={tensor.shape}, min={tensor.min().item():.4f}, max={tensor.max().item():.4f}, mean={tensor.mean().item():.4f}")
+            return ({"samples": tensor},)
+        # fallback to old formats
+        tensor = self._legacy_load(data[json_end:])
+        if tensor is not None:
+            return ({"samples": tensor},)
+        raise RuntimeError(f"Failed to load latent from {full_path}")
+    def _find_json_end(self, data, start):
+        i = start
+        depth = 0
+        in_string = False
+        while i < len(data):
+            ch = data[i]
+            if in_string:
+                if ch == ord('\\'):
+                    i += 1
+                elif ch == ord('"'):
+                    in_string = False
+            else:
+                if ch == ord('"'):
+                    in_string = True
+                elif ch == ord('{'):
+                    depth += 1
+                elif ch == ord('}'):
+                    depth -= 1
+                    if depth == 0:
+                        return i + 1
+            i += 1
+        return -1
+    def _legacy_load(self, blob):
+        import io, pickle
+        for loader in [
+            lambda b: pickle.loads(b),
+            lambda b: torch.load(io.BytesIO(b), map_location='cpu'),
+            lambda b: __import__('safetensors.torch', fromlist=['load']).load(b) if len(b) > 0 else None,
+        ]:
+            try:
+                obj = loader(blob)
+                return self._extract(obj)
+            except:
+                continue
+        return None
+    def _extract(self, obj):
+        if isinstance(obj, dict):
+            t = obj.get("samples", next((v for v in obj.values() if isinstance(v, torch.Tensor)), None))
+            if t is None:
+                raise RuntimeError("Dictionary without tensor")
+        elif isinstance(obj, torch.Tensor):
+            t = obj
+        else:
+            raise RuntimeError(f"Unknown type: {type(obj)}")
+        if t.ndim == 3:
+            t = t.unsqueeze(0)
+        elif t.ndim == 2:
+            t = t.unsqueeze(0).unsqueeze(0)
+        return t.to(torch.float32)

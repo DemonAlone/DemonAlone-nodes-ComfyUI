@@ -7,8 +7,8 @@ ImageResizeNode is based on 🔧 Image Resize from [ComfyUI_essentials](https://
 
 DA_Base_KSampler and DA_Enhanced_KSampler based on WAS_KSampler from [was-node-suite-comfyui](https://github.com/WASasquatch/was-node-suite-comfyui) (archived)
 
-LoadImageWithMetadataNode is based on CImageLoadWithMetadata from https://github.com/crystian/ComfyUI-Crystools
+LoadImageWithMetadataNode is based on CImageLoadWithMetadata from [ComfyUI-Crystools](https://github.com/crystian/ComfyUI-Crystools)
 
-feedbackNode, MyXYZHelper, MyXYGridAccumulator,  MyXYZSuperStacker nodes based on nodes from  https://github.com/kenjiqq/qq-nodes-comfyui
+feedbackNode, MyXYZHelper, MyXYGridAccumulator,  MyXYZSuperStacker nodes based on nodes from  [qq-nodes-comfyui](https://github.com/kenjiqq/qq-nodes-comfyui)
 
-Created with the assistance of Google Gemini/Gemma, Qwen2.5-Coder, GPT-OSS, DeepSeek.
+Created with the assistance of Google Gemini/Gemma, Qwen, GPT-OSS, DeepSeek.

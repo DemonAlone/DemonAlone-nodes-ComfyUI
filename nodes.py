@@ -23,6 +23,9 @@ import re
 import torchvision.transforms as transforms
 import latent_preview
 import pickle
+import logging
+logger = logging.getLogger(__name__)
+
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -139,7 +142,7 @@ def build_metadata(image_path: str):
                     pass
 
         except ValueError:   # piexif could not read
-            logger.warn("piexif error on WebP – ignore")
+            logger.warning("piexif error on WebP – ignore")
 
     return img, prompt, metadata
     

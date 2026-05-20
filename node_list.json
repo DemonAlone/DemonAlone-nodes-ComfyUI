@@ -1,0 +1,15 @@
+[
+  "AnyAdapterNode", "AnyConcatNode", "AnytoIntegerAdapterNode", "AnytoFloatAdapterNode", 
+  "BooleanSwitchNode", "CheckpointSelectorNode", "ClipSkipSliderNode", "CountListNode", 
+  "DA_Base_KSampler", "DA_BusInNode", "DA_BusOutNode", "DA_Enhanced_KSampler", 
+  "DA_LatentLoader", "DiffusionModelGeneratorNode", "DiffusionModelSelectorNode", 
+  "ImageResizeNode", "FloatSelectorNode", "ListCreaterNode", "ListRerouteNode", 
+  "ListCombinerNode", "LoadImageWithMetadataNode", "LORASelectorNode", "MaskDebugNode", 
+  "ModelGeneratorNode", "MyXYZHelper", "MyXYGridAccumulator", "MyXYZSuperStacker", 
+  "OptionalCondMergeNode", "PonyPrefixesNode", "ResizeMethodControlNode", 
+  "ResizeInterpolationControlNode", "SamplerSelectorFromStringNode", "SamplerGeneratorNode", 
+  "SaveImageNoMetaNode", "ScaleImageAspectNode", "SchedulerSelectorFromStringNode", 
+  "SchedulerGeneratorNode", "ShiftSliderNode", "StringToAnyNode", "StringToIntNode", 
+  "StringToFloatNode", "TextConcatNode", "TextEncoderSelectorNode", "TextEncoderGeneratorNode", 
+  "VAEGeneratorNode", "VAESelectorNode", "WanNumFramesNode", "XYZConflictValidatorAndSwitch"
+]

@@ -25,7 +25,18 @@ import latent_preview
 import pickle
 import logging
 logger = logging.getLogger(__name__)
+import math
+import comfy.model_management
+import comfy.sample
+import comfy.utils
+import sys
 
+try:
+    from comfy_extras.nodes_upscale_model import ImageUpscaleWithModel
+    UPSCALE_AVAILABLE = True
+except ImportError:
+    UPSCALE_AVAILABLE = False
+    print("[TiledESRGANUpscaler] Warning: comfy_extras.nodes_upscale_model not found. Upscale model will be ignored.")
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -2283,3 +2294,182 @@ class DA_LatentLoader:
         elif t.ndim == 2:
             t = t.unsqueeze(0).unsqueeze(0)
         return t.to(torch.float32)
+
+class DA_TiledUpscaler:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model": ("MODEL",),
+                "vae": ("VAE",),
+                "upscale_factor": ("FLOAT", {"default": 2.0, "min": 1.0, "max": 4.0, "step": 0.1}),
+                "tile_size": ("INT", {"default": 512, "min": 64, "max": 2048, "step": 64}),
+                "overlap": ("INT", {"default": 64, "min": 0, "max": 256, "step": 8}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "steps": ("INT", {"default": 20, "min": 1, "max": 100}),
+                "cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 100.0}),
+                "denoise": ("FLOAT", {"default": 0.2, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "positive": ("CONDITIONING",),
+                "negative": ("CONDITIONING",),
+                "sampler_name": (comfy.samplers.KSampler.SAMPLERS,),
+                "scheduler": (comfy.samplers.KSampler.SCHEDULERS,),
+                "image": ("IMAGE",),
+                "preview_freq": ("INT", {"default": 1, "min": 1, "max": 100, "tooltip": "How often to update the preview (e.g., 2 for every other step)"}), 
+            },
+            "optional": {
+                "upscale_model_opt": ("UPSCALE_MODEL",),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "upscale_process"
+    DESCRIPTION = "Tiled diffusion upscaling with optional ESRGAN pre-scaling. Memory-efficient processing of large images in tiles, featuring seamless overlap blending, configurable denoise strength, and preview callbacks for detail enhancement without VRAM exhaustion."
+    CATEGORY = "Image Processing/Upscale"
+    
+    def upscale_full_image(self, image, target_size, upscale_model_opt):
+        new_H, new_W = target_size
+        if upscale_model_opt is not None and UPSCALE_AVAILABLE:
+            upscaler_node = ImageUpscaleWithModel()
+            upscaled = upscaler_node.upscale(upscale_model_opt, image)[0]
+            if upscaled.shape[1] != new_H or upscaled.shape[2] != new_W:
+                upscaled = upscaled.permute(0, 3, 1, 2)
+                upscaled = F.interpolate(upscaled, size=(new_H, new_W), mode='bicubic', align_corners=False)
+                upscaled = upscaled.permute(0, 2, 3, 1)
+        else:
+            img_nchw = image.permute(0, 3, 1, 2)
+            up_nchw = F.interpolate(img_nchw, size=(new_H, new_W), mode='bicubic', align_corners=False)
+            upscaled = up_nchw.permute(0, 2, 3, 1)
+        return upscaled
+
+    # Process a single tile through VAE -> KSampler -> VAE decode with callback support for progress and preview.
+    def diffuse_tile(self, tile, vae, model, positive, negative, seed, steps, cfg, denoise, sampler_name, scheduler, callback):
+        """Process a single tile via VAE encode, diffusion sampling, and VAE decode with callback support for progress updates and previews."""
+        # VAE encode (on CPU)
+        latent = vae.encode(tile)
+        device = comfy.model_management.get_torch_device()
+        latent = latent.to(device)
+        noise = comfy.sample.prepare_noise(latent, seed, None)
+        # Sampling with passed callback, disabling built-in progress bar
+        samples = comfy.sample.sample(
+            model, noise, steps, cfg, sampler_name, scheduler,
+            positive, negative, latent, denoise=denoise,
+            disable_pbar=True,  # Disable standard progress bar, use custom callback instead
+            callback=callback
+        )
+        samples = samples.cpu()
+        decoded = vae.decode(samples)
+        return decoded
+
+    def make_weight_mask(self, h, w, overlap):
+        mask = torch.ones(h, w, dtype=torch.float32)
+        if overlap > 0:
+            top = min(overlap, h)
+            if top > 0:
+                mask[:top, :] *= torch.linspace(0, 1, top).view(-1, 1)
+            bottom = min(overlap, h)
+            if bottom > 0:
+                mask[-bottom:, :] *= torch.linspace(0, 1, bottom).flip(0).view(-1, 1)
+            left = min(overlap, w)
+            if left > 0:
+                mask[:, :left] *= torch.linspace(0, 1, left)
+            right = min(overlap, w)
+            if right > 0:
+                mask[:, -right:] *= torch.linspace(0, 1, right).flip(0)
+        return mask.unsqueeze(0).unsqueeze(-1)
+
+    # --------------------------------------------------------------------------
+    # Main Process Method
+    # --------------------------------------------------------------------------
+    def upscale_process(self, image, vae, upscale_factor, tile_size, overlap, seed,
+                        steps, cfg, denoise, positive, negative, sampler_name, scheduler,
+                        model, upscale_model_opt=None, preview_freq=1):
+        
+        torch.manual_seed(seed)
+        B, H, W, C = image.shape
+        new_H = int(H * upscale_factor)
+        new_W = int(W * upscale_factor)
+        print(f"[TiledUpscaler] Target size: {new_H}x{new_W}")
+        
+        # 1. Pre-scale the entire image first
+        print("[TiledUpscaler] Pre-upscaling the full image...")
+        full_upscaled = self.upscale_full_image(image, (new_H, new_W), upscale_model_opt)
+        
+        # 2. Tile parameters
+        tile_sz = tile_size
+        overlap_px = overlap
+        step = max(tile_sz - overlap_px, 1)
+
+        # 3. Calculate grid of tiles
+        tiles_y = max(1, math.ceil((new_H - overlap_px) / step))
+        tiles_x = max(1, math.ceil((new_W - overlap_px) / step))
+        total_tiles = tiles_y * tiles_x
+        print(f"[TiledUpscaler] Grid: {tiles_y}x{tiles_x} = {total_tiles} tiles, tile size={tile_sz}, overlap={overlap_px}, step={step}")
+
+        # Global progress bar for all steps across all tiles
+        total_steps_all = total_tiles * steps
+        pbar = comfy.utils.ProgressBar(total_steps_all)
+
+        # Initialize previewer for generating previews from latents
+        device = comfy.model_management.get_torch_device()
+        try:
+            previewer = latent_preview.get_previewer(device, model.model.latent_format)
+            preview_format = "JPEG"
+        except Exception as e:
+            print(f"[TiledUpscaler] Preview not available: {e}")
+            previewer = None
+
+        output_canvas = torch.zeros((B, new_H, new_W, C), dtype=image.dtype, device="cpu")
+        weight_canvas = torch.zeros((B, new_H, new_W, C), dtype=image.dtype, device="cpu")
+        current_tile = 0
+
+        for ty in range(tiles_y):
+            y = ty * step
+            y_end = min(y + tile_sz, new_H)
+            for tx in range(tiles_x):
+                x = tx * step
+                x_end = min(x + tile_sz, new_W)
+                tile = full_upscaled[:, y:y_end, x:x_end, :]
+                print(f"[Tile {current_tile+1}/{total_tiles}] size={tile.shape[1]}x{tile.shape[2]}")
+                
+                # Calculate the starting global step for this tile
+                start_global_step = current_tile * steps
+
+                # Create callback for updating global progress and previews
+                def make_callback(start_step, total_steps, freq, pbar_ref, previewer_ref, fmt, tile_idx, total_tiles, steps_local):
+                    def callback(step, x0, x, total_steps_local):
+                        global_step = start_step + step + 1
+                        preview_bytes = None
+                        if previewer_ref is not None and ((step + 1) % freq == 0 or (step + 1) == total_steps_local):
+                            preview_bytes = previewer_ref.decode_latent_to_preview_image(fmt, x0)
+                        pbar_ref.update_absolute(global_step, total_steps, preview_bytes)
+                        percent = (step + 1) / steps_local
+                        bar_len = 30
+                        filled = int(bar_len * percent)
+                        bar = '█' * filled + '░' * (bar_len - filled)
+                        sys.stdout.write(f"\rTile {tile_idx+1}/{total_tiles}: {bar} {percent*100:3.0f}% step {step+1}/{steps_local}")
+                        if step + 1 == steps_local:
+                            sys.stdout.write("\n")
+                        sys.stdout.flush()
+                    return callback
+
+                # Instantiate callback with additional arguments:
+                callback_func = make_callback(
+                    start_global_step, total_steps_all, preview_freq,
+                    pbar, previewer, preview_format,
+                    current_tile, total_tiles, steps   # New arguments passed
+                )
+                
+                # Process tile with callback
+                refined = self.diffuse_tile(tile, vae, model, positive, negative,
+                                            seed, steps, cfg, denoise, sampler_name, scheduler,
+                                            callback=callback_func)
+                
+                # Smooth blending
+                mask = self.make_weight_mask(refined.shape[1], refined.shape[2], overlap_px)
+                mask = mask.to(refined.device)
+                output_canvas[:, y:y_end, x:x_end, :] += refined * mask
+                weight_canvas[:, y:y_end, x:x_end, :] += mask
+                current_tile += 1
+
+        final_image = (output_canvas / (weight_canvas + 1e-8)).clamp(0, 1)
+        return (final_image,)

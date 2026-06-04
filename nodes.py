@@ -2314,7 +2314,8 @@ class DA_TiledUpscaler:
                 "sampler_name": (comfy.samplers.KSampler.SAMPLERS,),
                 "scheduler": (comfy.samplers.KSampler.SCHEDULERS,),
                 "image": ("IMAGE",),
-                "preview_freq": ("INT", {"default": 1, "min": 1, "max": 100, "tooltip": "How often to update the preview (e.g., 2 for every other step)"}), 
+                "preview_freq": ("INT", {"default": 1, "min": 1, "max": 100, "tooltip": "How often to update the preview (e.g., 2 for every other step)"}),
+                "force_full_tiles": ("BOOLEAN", {"default": True, "tooltip": "Pad edge tiles to full tile_size for consistent denoise effect"}),
             },
             "optional": {
                 "upscale_model_opt": ("UPSCALE_MODEL",),
@@ -2377,12 +2378,41 @@ class DA_TiledUpscaler:
                 mask[:, -right:] *= torch.linspace(0, 1, right).flip(0)
         return mask.unsqueeze(0).unsqueeze(-1)
 
+    # Helper: pad tile to full size, safely choosing padding mode
+    def pad_to_full(self, tile, target_h, target_w):
+        _, orig_h, orig_w, _ = tile.shape
+        pad_bottom = target_h - orig_h
+        pad_right = target_w - orig_w
+        if pad_bottom == 0 and pad_right == 0:
+            return tile
+        # Convert to (B, C, H, W)
+        tile_nchw = tile.permute(0, 3, 1, 2)
+        
+        # Determine padding mode:
+        # 'reflect' is nicer but requires pad < dim size for each padded dimension
+        # Use 'replicate' if any padding is too large or if dimension is too small
+        use_reflect = True
+        if pad_bottom > 0 and (pad_bottom >= orig_h):
+            use_reflect = False
+        if pad_right > 0 and (pad_right >= orig_w):
+            use_reflect = False
+        # Also if any dimension is 1, reflect fails
+        if orig_h == 1 or orig_w == 1:
+            use_reflect = False
+        
+        mode = 'reflect' if use_reflect else 'replicate'
+        # Pad order: (left, right, top, bottom) for (W, H)
+        padded_nchw = F.pad(tile_nchw, (0, pad_right, 0, pad_bottom), mode=mode)
+        # Convert back to (B, H, W, C)
+        padded_tile = padded_nchw.permute(0, 2, 3, 1)
+        return padded_tile
+
     # --------------------------------------------------------------------------
     # Main Process Method
     # --------------------------------------------------------------------------
     def upscale_process(self, image, vae, upscale_factor, tile_size, overlap, seed,
                         steps, cfg, denoise, positive, negative, sampler_name, scheduler,
-                        model, upscale_model_opt=None, preview_freq=1):
+                        model, upscale_model_opt=None, preview_freq=1, force_full_tiles=False):
         
         torch.manual_seed(seed)
         B, H, W, C = image.shape
@@ -2428,8 +2458,17 @@ class DA_TiledUpscaler:
             for tx in range(tiles_x):
                 x = tx * step
                 x_end = min(x + tile_sz, new_W)
+                orig_h = y_end - y
+                orig_w = x_end - x
                 tile = full_upscaled[:, y:y_end, x:x_end, :]
-                print(f"[Tile {current_tile+1}/{total_tiles}] size={tile.shape[1]}x{tile.shape[2]}")
+                print(f"[Tile {current_tile+1}/{total_tiles}] original size={orig_h}x{orig_w}")
+                
+                # Pad to full tile size if requested and needed
+                if force_full_tiles and (orig_h != tile_sz or orig_w != tile_sz):
+                    padded_tile = self.pad_to_full(tile, tile_sz, tile_sz)
+                    process_tile = padded_tile
+                else:
+                    process_tile = tile
                 
                 # Calculate the starting global step for this tile
                 start_global_step = current_tile * steps
@@ -2452,20 +2491,26 @@ class DA_TiledUpscaler:
                         sys.stdout.flush()
                     return callback
 
-                # Instantiate callback with additional arguments:
+                # Instantiate callback
                 callback_func = make_callback(
                     start_global_step, total_steps_all, preview_freq,
                     pbar, previewer, preview_format,
-                    current_tile, total_tiles, steps   # New arguments passed
+                    current_tile, total_tiles, steps
                 )
                 
-                # Process tile with callback
-                refined = self.diffuse_tile(tile, vae, model, positive, negative,
-                                            seed, steps, cfg, denoise, sampler_name, scheduler,
-                                            callback=callback_func)
+                # Process tile (may be padded)
+                refined_full = self.diffuse_tile(process_tile, vae, model, positive, negative,
+                                                 seed, steps, cfg, denoise, sampler_name, scheduler,
+                                                 callback=callback_func)
                 
-                # Smooth blending
-                mask = self.make_weight_mask(refined.shape[1], refined.shape[2], overlap_px)
+                # If tile was padded, crop back to original dimensions
+                if force_full_tiles and (orig_h != tile_sz or orig_w != tile_sz):
+                    refined = refined_full[:, :orig_h, :orig_w, :]
+                else:
+                    refined = refined_full
+                
+                # Smooth blending with mask based on original tile size
+                mask = self.make_weight_mask(orig_h, orig_w, overlap_px)
                 mask = mask.to(refined.device)
                 output_canvas[:, y:y_end, x:x_end, :] += refined * mask
                 weight_canvas[:, y:y_end, x:x_end, :] += mask

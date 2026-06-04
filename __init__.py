@@ -147,7 +147,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TextConcatNode": "Text Concatenator",
     "TextEncoderGeneratorNode": "Dynamic Encoder Selector",
     "TextEncoderSelectorNode": "Text Encoder Selector",
-    "DA_TiledUpscaler": "Tiled Upscaler",
+    "DA_TiledUpscaler": "Tiled Upscaler (experemental)",
     "VAEGeneratorNode": "Dynamic VAE Selector", 
     "VAESelectorNode": "VAE Selector",
     "WanNumFramesNode": " Wan Number of Frames",

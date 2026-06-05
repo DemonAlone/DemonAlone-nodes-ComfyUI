@@ -2420,6 +2420,18 @@ class DA_TiledUpscaler:
         new_W = int(W * upscale_factor)
         print(f"[TiledUpscaler] Target size: {new_H}x{new_W}")
         
+        # ANSI color codes for terminal output
+        COLOR_WARNING = "\033[93m"    # yellow
+        COLOR_RESET = "\033[0m"
+        COLOR_INFO = "\033[92m"       # green optional
+        COLOR_ERROR = "\033[91m"      # red
+
+        # Checking whether the tile size exceeds the final image
+        if not force_full_tiles and (new_H < tile_size or new_W < tile_size):
+            print(f"{COLOR_WARNING}[TiledUpscaler] WARNING: Tile size ({tile_size}) exceeds upscaled image dimensions ({new_H}x{new_W}) while 'force_full_tiles' is disabled. This will cause tensor size mismatches. Consider enabling 'force_full_tiles', reducing tile_size, or increasing upscale_factor.{COLOR_RESET}")
+            force_full_tiles = True
+            print(f"{COLOR_WARNING}[TiledUpscaler] Automatically enabling 'force_full_tiles' to continue processing.{COLOR_RESET}")
+        
         # 1. Pre-scale the entire image first
         print("[TiledUpscaler] Pre-upscaling the full image...")
         full_upscaled = self.upscale_full_image(image, (new_H, new_W), upscale_model_opt)

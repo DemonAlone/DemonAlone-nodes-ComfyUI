@@ -781,7 +781,7 @@ class PonyPrefixesNode:
         return (result,)
 
 class ImageResizeNode:
-
+    
     # ImageResizeNode is based on 🔧 Image Resize from Efficiency Nodes
     """
     # Efficiency Nodes - A collection of my ComfyUI custom nodes to help streamline workflows and reduce total node count.
@@ -790,181 +790,153 @@ class ImageResizeNode:
     Resize an image and a mask synchronously.
     The mask is resized with nearest‑neighbor to keep its binary nature.
     """
-
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT")
-    RETURN_NAMES = ("image_out", "mask_out", "width", "height")
-    FUNCTION     = "execute"
-    CATEGORY     = "utils"
-    DESCRIPTION = "A versatile utility node for synchronously resizing images and masks. Supports multiple scaling methods (stretch, keep proportion, fill/crop, pad), various interpolation filters, and conditional logic to resize only when necessary. Automatically handles empty outputs if an input tensor is missing."
-
+    
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "optional": {          # both inputs are now optional
-                "image":  ("IMAGE",),
-                "mask":   ("MASK",),
-
-                "width":  ("INT", {"default": 512, "min": 0, "max": 16834}),
+            "optional": {
+                "image": ("IMAGE",),
+                "mask": ("MASK",),
+                "width": ("INT", {"default": 512, "min": 0, "max": 16834}),
                 "height": ("INT", {"default": 512, "min": 0, "max": 16834}),
-
-                "method":        (["stretch",
-                                   "keep proportion",
-                                   "fill / crop",
-                                   "pad"],),
-                "interpolation": (["nearest",
-                                   "bilinear",
-                                   "bicubic",
-                                   "area",
-                                   "nearest-exact",
-                                   "lanczos"],),
-                "condition":     (["always",
-                                   "downscale if bigger",
-                                   "upscale if smaller",
-                                   "if bigger area",
-                                   "if smaller area"],),
+                "method": (["stretch", "keep proportion", "fill / crop", "pad"],),
+                "interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos"],),
+                "condition": (["always", "downscale if bigger", "upscale if smaller", "if bigger area", "if smaller area"],),
+                "multiple_of": ("INT", {"default": 1, "min": 1, "max": 512, "description": "1 = disable, otherwise round down to multiple"})
             }
         }
+    
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT")
+    RETURN_NAMES = ("image_out", "mask_out", "width", "height")
+    FUNCTION = "execute"
+    DESCRIPTION = "A versatile utility node for synchronously resizing images and masks. Supports multiple scaling methods (stretch, keep proportion, fill/crop, pad), various interpolation filters, and conditional logic to resize only when necessary. Automatically handles empty outputs if an input tensor is missing."
+    CATEGORY = "utils"
 
-    def execute(self,
-                image=None,
-                mask=None,
-                width: int = 512,
-                height: int = 512,
-                method: str = "stretch",
-                interpolation: str = "nearest",
-                condition: str = "always"):
-        """
-        Resizes both an image and a mask (if provided) using the same target size.
-        If only one of them is connected, that one will be resized while the other
-        stays untouched.  If an input is missing, the corresponding output tensor
-        will be empty (filled with zeros).
-        """
-
+    def execute(self, image=None, mask=None, width=512, height=512, method="stretch",
+                interpolation="nearest", condition="always", multiple_of=64):
         has_image = image is not None
-        has_mask  = mask is not None
-
+        has_mask = mask is not None
         if not (has_image or has_mask):
             raise ValueError("At least one of 'image' or 'mask' must be connected")
 
-        # --------- 0. Determine original sizes ----------
-        source_tensor = image if has_image else mask
-        if source_tensor.ndim == 4:
-            _, oh, ow, _ = source_tensor.shape   # (B,H,W,C)
-        elif source_tensor.ndim == 3:
-            _, oh, ow = source_tensor.shape      # (B,H,W)
+        # source dimensions
+        source = image if has_image else mask
+        if source.ndim == 4:
+            _, oh, ow, _ = source.shape
+        elif source.ndim == 3:
+            _, oh, ow = source.shape
         else:
-            raise ValueError(f"Unsupported source tensor shape: {source_tensor.shape}")
+            raise ValueError(f"Unsupported shape: {source.shape}")
 
-        # --------- 1. Compute target size ----------
-        pad_left = pad_right = pad_top = pad_bottom = 0
-        x = y = x2 = y2 = None
+        # target dimensions (final)
+        final_w = width if width > 0 else ow
+        final_h = height if height > 0 else oh
 
-        if method == "keep proportion":
-            ratio   = min(width / ow if width else float("inf"),
-                         height / oh if height else float("inf"))
-            new_w, new_h = round(ow * ratio), round(oh * ratio)
-            target_w, target_h = new_w, new_h
+        # intermediate variables
+        resize_w, resize_h = final_w, final_h
+        pad_l = pad_r = pad_t = pad_b = 0
+        crop_x = crop_y = crop_x2 = crop_y2 = None
+
+        if method == "stretch":
+            resize_w, resize_h = final_w, final_h
+
+        elif method == "keep proportion":
+            ratio = min(final_w / ow, final_h / oh)
+            resize_w = round(ow * ratio)
+            resize_h = round(oh * ratio)
 
         elif method == "pad":
-            ratio   = min(width / ow if width else float("inf"),
-                         height / oh if height else float("inf"))
-            new_w, new_h = round(ow * ratio), round(oh * ratio)
-            pad_left  = (width - new_w) // 2
-            pad_right = width - new_w - pad_left
-            pad_top   = (height - new_h) // 2
-            pad_bottom= height - new_h - pad_top
-            target_w, target_h = new_w, new_h
+            ratio = min(final_w / ow, final_h / oh)
+            resize_w = round(ow * ratio)
+            resize_h = round(oh * ratio)
+            pad_l = (final_w - resize_w) // 2
+            pad_r = final_w - resize_w - pad_l
+            pad_t = (final_h - resize_h) // 2
+            pad_b = final_h - resize_h - pad_t
 
         elif method == "fill / crop":
-            target_w = width if width else ow
-            target_h = height if height else oh
-            ratio    = max(target_w / ow, target_h / oh)
-            new_w, new_h = round(ow * ratio), round(oh * ratio)
+            ratio = max(final_w / ow, final_h / oh)
+            resize_w = round(ow * ratio)
+            resize_h = round(oh * ratio)
+            crop_x = (resize_w - final_w) // 2
+            crop_y = (resize_h - final_h) // 2
+            crop_x2 = crop_x + final_w
+            crop_y2 = crop_y + final_h
+            if crop_x2 > resize_w:
+                crop_x -= (crop_x2 - resize_w)
+            if crop_x < 0:
+                crop_x = 0
+            if crop_y2 > resize_h:
+                crop_y -= (crop_y2 - resize_h)
+            if crop_y < 0:
+                crop_y = 0
+            crop_x2 = crop_x + final_w
+            crop_y2 = crop_y + final_h
 
-            x  = (new_w - target_w) // 2
-            y  = (new_h - target_h) // 2
-            x2 = x + target_w
-            y2 = y + target_h
-
-            if x2 > new_w:   x -= (x2 - new_w)
-            if x < 0:        x = 0
-            if y2 > new_h:   y -= (y2 - new_h)
-            if y < 0:        y = 0
-
-            target_w, target_h = new_w, new_h
-
-        else:                          # stretch or unknown method
-            target_w = width  if width  else ow
-            target_h = height if height else oh
-
-        new_width, new_height = target_w, target_h
-
-        # --------- 2. When to perform resize ----------
+        # condition for resizing
         should_resize = (
             condition == "always" or
-            ("downscale if bigger" == condition and (oh > new_height or ow > new_width)) or
-            ("upscale if smaller" == condition and (oh < new_height or ow < new_width)) or
-            ("bigger area" in condition and (oh * ow > new_height * new_width)) or
-            ("smaller area" in condition and (oh * ow < new_height * new_width))
+            (condition == "downscale if bigger" and (oh > final_h or ow > final_w)) or
+            (condition == "upscale if smaller" and (oh < final_h or ow < final_w)) or
+            (condition == "if bigger area" and (oh * ow > final_h * final_w)) or
+            (condition == "if smaller area" and (oh * ow < final_h * final_w))
         )
 
-        # --------- 3. Resize image ----------
+        # --- image processing ---
         if has_image:
-            img = image.permute(0, 3, 1, 2)   # B,C,H,W
-
+            img = image.permute(0, 3, 1, 2)  # B,C,H,W
             if should_resize:
                 if interpolation == "lanczos" and comfy is not None:
-                    img = comfy.utils.lanczos(img, new_width, new_height)
+                    img = comfy.utils.lanczos(img, resize_w, resize_h)
                 else:
-                    kwargs = {"size": (new_height, new_width)}
+                    kwargs = {"size": (resize_h, resize_w)}
                     if interpolation in ("linear", "bilinear", "bicubic", "trilinear"):
                         kwargs["align_corners"] = False
                     img = F.interpolate(img, mode=interpolation, **kwargs)
 
-                if method == "pad" and (pad_left or pad_right or pad_top or pad_bottom):
-                    img = F.pad(img,
-                                (pad_left, pad_right, pad_top, pad_bottom),
-                                mode='constant', value=0)
-                if method == "fill / crop":
-                    img = img[:, :, y:y2, x:x2]
+                if method == "pad":
+                    img = F.pad(img, (pad_l, pad_r, pad_t, pad_b), mode='constant', value=0)
+                elif method == "fill / crop":
+                    img = img[:, :, crop_y:crop_y2, crop_x:crop_x2]
 
-            image_out = img.permute(0, 2, 3, 1)   # B,H,W,C
+            image_out = img.permute(0, 2, 3, 1)
         else:
-            # Create an empty tensor for image_out
-            batch_size = source_tensor.shape[0]
-            channels = 3 if has_image else 1  # If there's no image input, use one channel
-            image_out = torch.zeros(batch_size, new_height, new_width, channels)
+            batch = source.shape[0]
+            image_out = torch.zeros(batch, final_h, final_w, 3)
 
-        # --------- 4. Resize mask ----------
+        # --- mask processing ---
         if has_mask:
-            # --- Prepare input for processing ---
-            if mask.ndim == 3:          # (B, H, W)
-                msk = mask.unsqueeze(1)    # -> B,1,H,W
-            elif mask.ndim == 4 and mask.shape[3] == 1:   # (B, H, W, 1)
-                msk = mask.permute(0, 3, 1, 2)           # -> B,1,H,W
+            if mask.ndim == 3:
+                msk = mask.unsqueeze(1)
+            elif mask.ndim == 4 and mask.shape[3] == 1:
+                msk = mask.permute(0, 3, 1, 2)
             else:
                 raise ValueError(f"Unsupported mask shape: {mask.shape}")
 
             if should_resize:
-                msk = F.interpolate(msk,
-                                    size=(new_height, new_width),
-                                    mode='nearest')
+                msk = F.interpolate(msk, size=(resize_h, resize_w), mode='nearest')
+                if method == "pad":
+                    msk = F.pad(msk, (pad_l, pad_r, pad_t, pad_b), mode='constant', value=0)
+                elif method == "fill / crop":
+                    msk = msk[:, :, crop_y:crop_y2, crop_x:crop_x2]
 
-                if method == "pad" and (pad_left or pad_right or pad_top or pad_bottom):
-                    msk = F.pad(msk,
-                                (pad_left, pad_right, pad_top, pad_bottom),
-                                mode='constant', value=0)
-                if method == "fill / crop":
-                    msk = msk[:, :, y:y2, x:x2]
-
-            # --- Return mask in format (B,H,W) ---
-            mask_out = msk.squeeze(1)      # remove channel 1
+            mask_out = msk.squeeze(1)
         else:
-            # Create an empty tensor for mask_out
-            batch_size = source_tensor.shape[0]
-            mask_out = torch.zeros(batch_size, new_height, new_width)
+            batch = source.shape[0]
+            mask_out = torch.zeros(batch, final_h, final_w)
 
-        return image_out, mask_out, new_width, new_height
+        # --- apply multiple_of (If >1) ---
+        if multiple_of > 1:
+            final_w = (final_w // multiple_of) * multiple_of
+            final_h = (final_h // multiple_of) * multiple_of
+            # important: crop/pad image and mask to new dimensions
+            if final_w != image_out.shape[2] or final_h != image_out.shape[1]:
+                # Simple centered cropping
+                image_out = image_out[:, :final_h, :final_w, :]
+                mask_out = mask_out[:, :final_h, :final_w]
+
+        return image_out, mask_out, final_w, final_h
+
 
 class ResizeMethodControlNode:
     """

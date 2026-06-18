@@ -2502,3 +2502,21 @@ class DA_TiledUpscaler:
 
         final_image = (output_canvas / (weight_canvas + 1e-8)).clamp(0, 1)
         return (final_image,)
+        
+class PatchModelSelectorNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "patch_name": (folder_paths.get_filename_list("model_patches"),),
+            }
+        }
+
+    RETURN_TYPES = (folder_paths.get_filename_list("model_patches"), "STRING")
+    RETURN_NAMES = ("patch_name", "patch_name_str")
+    CATEGORY = "utils"
+    DESCRIPTION = "Retrieves patch model names from the ComfyUI patches folder and outputs both filename tuple (combo) and string representation for dynamic patch selection."
+    FUNCTION = "get_patch_name"
+
+    def get_patch_name(self, patch_name):
+        return patch_name, patch_name

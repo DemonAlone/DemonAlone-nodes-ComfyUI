@@ -937,7 +937,6 @@ class ImageResizeNode:
 
         return image_out, mask_out, final_w, final_h
 
-
 class ResizeMethodControlNode:
     """
     Remote control unit with resizing method.
@@ -1934,7 +1933,7 @@ class BooleanSwitchNode:
 class SaveImageNoMetaNode:
     """
     Saves an image without workflow/metadata.
-    Supports %date% placeholder which is replaced by yyyy-mm-dd.
+    Supports %date% placeholder which is replaced by yyyy-mm-dd or a custom mask.
     Supports png and jpg formats.
     Always saves the file inside the `output/<relative path>` folder.
     An index is added automatically (00001, 00002 ...).
@@ -1944,11 +1943,11 @@ class SaveImageNoMetaNode:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "path": ("STRING",
-                         {"default": "ComfyUI",
-                          "tooltip": "Relative path inside `output`. Use %date% for yyyy-mm-dd."}),
+                "path": ("STRING", {"default": "ComfyUI", "tooltip": "Relative path inside `output`. Use %date% for date."}),
                 "format": (["png", "jpg"],),
                 "preview": ("BOOLEAN", {"default": True}),
+                "date_mask": ("BOOLEAN", {"default": False, "label_on": "Custom Date", "label_off": "Default Date"}),
+                "custom_date_format": ("STRING", {"default": "yyyy-mm-dd", "tooltip": "Date format if custom mask is enabled (e.g., yyyy, dd-mm-yyyy)"}),
             }
         }
 
@@ -1956,7 +1955,7 @@ class SaveImageNoMetaNode:
     FUNCTION = "save"
     CATEGORY = "ImageSaver"
     OUTPUT_NODE = True
-    DESCRIPTION = "Saves images to the output folder without embedding workflow metadata. Supports PNG/JPEG formats, automatic date stamping (%date%), and auto-indexing (e.g., 00001.png) for duplicate files. Always strips EXIF/metadata to ensure clean output files."
+    DESCRIPTION = "Saves images to the output folder without embedding workflow metadata. Supports PNG/JPEG formats, automatic date stamping (%date%) with custom format support, and auto-indexing (e.g., 00001.png) for duplicate files."
 
     def _ensure_rgb_uint8(self, img):
         if isinstance(img, torch.Tensor):
@@ -1996,13 +1995,25 @@ class SaveImageNoMetaNode:
                 return candidate
             counter += 1
 
-    def save(self, image, path: str, format: str, preview: bool):
+    def save(self, image, path: str, format: str, preview: bool, date_mask: bool, custom_date_format: str):
         if not path:
             raise ValueError("Save path is not specified")
             
-        # Replace %date% with the current date in the format yyyy-mm-dd
-        current_date = datetime.now().strftime("%Y-%m-%d")
-        processed_path = path.replace("%date%", current_date)
+        # Determine date string based on toggle
+        current_date = datetime.now()
+        date_str = current_date.strftime("%Y-%m-%d")
+        
+        if date_mask:
+            # Parse custom format (simple mapping)
+            year = str(current_date.year).zfill(4)
+            month = str(current_date.month).zfill(2)
+            day = str(current_date.day).zfill(2)
+            
+            # Simple replacement for common tokens
+            date_str = custom_date_format.replace("yyyy", year).replace("mm", month).replace("dd", day)
+
+        # Replace %date% with the calculated string
+        processed_path = path.replace("%date%", date_str)
         
         # 1. Define the root of the output folder
         output_base = Path(os.getcwd()) / "output"

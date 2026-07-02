@@ -30,6 +30,7 @@ import comfy.model_management
 import comfy.sample
 import comfy.utils
 import sys
+import itertools
 
 try:
     from comfy_extras.nodes_upscale_model import ImageUpscaleWithModel
@@ -2531,3 +2532,106 @@ class PatchModelSelectorNode:
 
     def get_patch_name(self, patch_name):
         return patch_name, patch_name
+
+class MultiPlaceholderPromptList:
+    """
+    Generates a list of prompts, replacing multiple placeholders in a template with all possible combinations of values from corresponding lists.
+    Placeholders in the template should be specified in the form {name}.
+    """
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "Template": ("STRING", {
+                    "multiline": True,
+                    "default": "a girl in a {color} dress with {hair} hair",  
+                    "tooltip": "Main prompt template. Use placeholders in the form {name}."
+                }),
+                "values_separator": ("STRING", {
+                    "default": ",",
+                    "tooltip": "Separator used for listing values for each placeholder (supports \\n)."
+                }),
+                "placeholder1": ("STRING", {
+                    "default": "{color}",
+                    "tooltip": "First placeholder to replace (e.g., {color})."
+                }),
+                "values1": ("STRING", {
+                    "multiline": True,
+                    "default": "blue, red, black",
+                    "tooltip": "List of values for the first placeholder, separated by the separator."
+                }),
+                "placeholder2": ("STRING", {
+                    "default": "{hair}",
+                    "tooltip": "Second placeholder to replace."
+                }),
+                "values2": ("STRING", {
+                    "multiline": True,
+                    "default": "blonde, brown, black",
+                    "tooltip": "List of values for the second placeholder."
+                }),
+                "placeholder3": ("STRING", {
+                    "default": "",
+                    "tooltip": "Third placeholder (leave empty if not needed)."
+                }),
+                "values3": ("STRING", {
+                    "multiline": True,
+                    "default": "",
+                    "tooltip": "List of values for the third placeholder."
+                }),
+            }
+        }
+
+    RETURN_TYPES = ("LIST",)
+    FUNCTION = "generate"
+    CATEGORY = "utility/text"
+    DESCRIPTION = "Creates a list of prompts, substituting all possible combinations of values from specified lists into placeholders in the template."
+
+    def generate(self, Template, values_separator, placeholder1, values1, placeholder2, values2, placeholder3, values3):
+        # Separator processing (supports \n)
+        sep = "\n" if values_separator == r"\n" else values_separator
+
+        # Collect pairs (placeholder, value list), ignoring empty ones
+        pairs = []
+        for ph, vals in [(placeholder1, values1), (placeholder2, values2), (placeholder3, values3)]:
+            if ph.strip() and vals.strip():
+                value_list = [v.strip() for v in vals.split(sep) if v.strip()]
+                if value_list:   
+                    pairs.append((ph.strip(), value_list))
+
+        # If no pairs at all — return cleaned original template
+        if not pairs:
+            return ([Template.strip()],)
+
+        # Find all placeholders in template (searching for {something})
+        import re
+        found = re.findall(r'\{[^}]+\}', Template)
+        unique_in_template = []
+        for ph in found:
+            if ph not in unique_in_template:
+                unique_in_template.append(ph)
+
+        # Dictionary: placeholder → value list
+        ph_to_values = dict(pairs)
+
+        # Take only those placeholders that are in the template and have values defined
+        vary_pairs = [(ph, ph_to_values[ph]) for ph in unique_in_template if ph in ph_to_values]
+
+        # If none exist — return cleaned template
+        if not vary_pairs:
+            return ([Template.strip()],)
+
+        # Generate Cartesian product
+        value_lists = [values for _, values in vary_pairs]
+        combinations = list(itertools.product(*value_lists))
+
+        # Collect results
+        results = []
+        for combo in combinations:
+            prompt = Template
+            for (ph, _), val in zip(vary_pairs, combo):
+                prompt = prompt.replace(ph, val)
+            
+            # .strip() removes any accidental \n and spaces at the beginning and end of the resulting prompt
+            results.append(prompt.strip())
+
+        return (results,)

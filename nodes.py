@@ -1680,14 +1680,14 @@ class ListCreaterNode:
     """
     Splits the input multiline text by the specified delimiter 
     and returns a list of strings.
-    
     Supports escaped sequences, for example "\n" → newline.
     """
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "Separator": ("STRING", {"default": ","}),
+                "Separator": ("STRING", {"default": ",", "tooltip": "\\n → newline"}),
+                "RemoveEmptyValues": ("BOOLEAN", {"default": False, "label_on": True, "label_off": False}),
                 "Text": ("STRING", {"multiline": True}),
             }
         }
@@ -1695,16 +1695,20 @@ class ListCreaterNode:
     RETURN_TYPES = ("LIST",)
     FUNCTION = "split_text"
     CATEGORY = "utility/text"
-    DESCRIPTION = "Splits multiline text strings into a list of individual items using a custom delimiter (supports commas, newlines, etc.). Useful for parsing batch configurations or breaking down complex prompts into separate components."
+    DESCRIPTION = "Splits text strings into a list of items using custom delimiters (supports commas, newlines, etc.) with optional empty value removal."
 
-    def split_text(self, Text: str, Separator: str):
+    def split_text(self, Text: str, Separator: str, RemoveEmptyValues: bool):
         # Logic for the "\n" separator
         if Separator == r"\n":
             sep = "\n"
         else:
             sep = Separator
+        
         parts = Text.split(sep)
         cleaned = [p.strip().replace('\n', ' ') for p in parts]
+
+        if RemoveEmptyValues:
+            cleaned = [p for p in cleaned if p]
 
         return (cleaned,)
         
@@ -2594,16 +2598,25 @@ class MultiPlaceholderPromptList:
         pairs = []
         for ph, vals in [(placeholder1, values1), (placeholder2, values2), (placeholder3, values3)]:
             if ph.strip() and vals.strip():
-                value_list = [v.strip() for v in vals.split(sep) if v.strip()]
-                if value_list:   
-                    pairs.append((ph.strip(), value_list))
+                # Splitting the string into elements, trimming edge whitespace, and removing empty items caused by accidental line breaks
+
+                raw_list = [v.strip() for v in vals.split(sep) if v.strip()]
+                
+                value_list = []
+                for v in raw_list:
+                    if v == "_empty_":
+                        value_list.append("")  # Convert marker to a valid empty string
+                    else:
+                        value_list.append(v)
+                            
+                    if value_list:   
+                            pairs.append((ph.strip(), value_list))
 
         # If no pairs at all — return cleaned original template
         if not pairs:
             return ([Template.strip()],)
 
         # Find all placeholders in template (searching for {something})
-        import re
         found = re.findall(r'\{[^}]+\}', Template)
         unique_in_template = []
         for ph in found:
@@ -2631,7 +2644,8 @@ class MultiPlaceholderPromptList:
             for (ph, _), val in zip(vary_pairs, combo):
                 prompt = prompt.replace(ph, val)
             
-            # .strip() removes any accidental \n and spaces at the beginning and end of the resulting prompt
-            results.append(prompt.strip())
+        # Remove unnecessary double spaces left where the placeholder was replaced, and trim the string ends from accidental newlines
+            cleaned_prompt = " ".join(prompt.split())
+            results.append(cleaned_prompt.strip())
 
         return (results,)

@@ -157,84 +157,6 @@ def build_metadata(image_path: str):
             logger.warning("piexif error on WebP – ignore")
 
     return img, prompt, metadata
-    
-def create_grid_annotation(
-    image: Image.Image,
-    column_texts: list = None,
-    row_texts: list = None,
-    font: ImageFont.FreeTypeFont = None,
-    text_color: tuple = (255, 255, 255),
-    bg_color: tuple = (0, 0, 0),
-    
-    ) -> Image.Image:
-    """
-    Adds annotations (text above and left) to the image.
-    Returns a new image with fields for annotations.
-    """
-    # If no column or row texts provided, return original image
-    if column_texts is None and row_texts is None:
-        return image
-
-    # Try to use a specific font if not provided
-    if font is None:
-        try:
-            font = ImageFont.truetype("arial.ttf", 20)
-        except:
-            font = ImageFont.load_default()
-
-    # Calculate the height needed for text in columns
-    draw = ImageDraw.Draw(image)
-    col_height = 0
-    if column_texts:
-    # Calculate the height needed for text in columns
-        for txt in column_texts:
-            bbox = draw.textbbox((0, 0), txt, font=font)
-            col_height = max(col_height, bbox[3] - bbox[1])
-        col_height += 10  # Add small spacing between text
-
-    # Calculate the width needed for rows
-    row_width = 0
-    if row_texts:
-        for txt in row_texts:
-            bbox = draw.textbbox((0, 0), txt, font=font)
-            row_width = max(row_width, bbox[2] - bbox[0])
-        row_width += 10
-    # Get original image dimensions
-    orig_w, orig_h = image.size
-    # Get original image dimensions
-
-    new_w = orig_w + row_width
-    new_h = orig_h + col_height
-
-    # Create a new blank image with background color
-    new_img = Image.new("RGB", (new_w, new_h), bg_color)
-    # Create a new blank image with background color
-    new_img.paste(image, (row_width, col_height))
-
-    draw = ImageDraw.Draw(new_img)
-
-    # Create a new blank image with background color
-    if column_texts:
-        # Create a new blank image with background color
-        col_w = orig_w // len(column_texts)
-        for i, txt in enumerate(column_texts):
-            bbox = draw.textbbox((0, 0), txt, font=font)
-            text_w = bbox[2] - bbox[0]
-            x = row_width + i * col_w + (col_w - text_w) // 2
-            y = (col_height - (bbox[3] - bbox[1])) // 2
-            draw.text((x, y), txt, fill=text_color, font=font)
-
-    # Create a new blank image with background color
-    if row_texts:
-        row_h = orig_h // len(row_texts)
-        for i, txt in enumerate(row_texts):
-            bbox = draw.textbbox((0, 0), txt, font=font)
-            text_h = bbox[3] - bbox[1]
-            y = col_height + i * row_h + (row_h - text_h) // 2
-            x = (row_width - (bbox[2] - bbox[0])) // 2
-            draw.text((x, y), txt, fill=text_color, font=font)
-
-    return new_img
 
 def images_grid_by_columns(
     images: list,
@@ -1484,8 +1406,8 @@ class MyXYZHelper:
                 "row_prefix": ("STRING", {"default": ""}),
                 "column_prefix": ("STRING", {"default": ""}),
                 "page_prefix": ("STRING", {"default": ""}),
-                "font_size": ("INT", {"default": 50}),
-                "grid_gap": ("INT", {"default": 20}),
+                "font_size": ("INT", {"default": 20, "min": 10, "max": 40}),
+                "grid_gap": ("INT", {"default": 20, "max": 100}),
             }
         }
 
@@ -1569,7 +1491,7 @@ class MyXYGridAccumulator(FeedbackNode):
                     MyXYGridAccumulator.image_batch, 
                     images.to(MyXYGridAccumulator.image_batch.device)
                 ), dim=0)
-        # ---- If the page is not yet filled ----
+        
         curr_num = MyXYGridAccumulator.image_batch.shape[0]
 
         if curr_num < count:
@@ -1578,7 +1500,7 @@ class MyXYGridAccumulator(FeedbackNode):
                 preview_list = [MyXYGridAccumulator.image_batch[i] for i in range(curr_num)]
                 ui_res = self.preview_images(preview_list)
             return {"result": (ExecutionBlocker(None),), "ui": {"images": ui_res}}
-        # ---- Page is filled, constructing the grid ----
+
         page_imgs = MyXYGridAccumulator.image_batch[:count]
         MyXYGridAccumulator.image_batch = torch.Tensor()  # Clear for the next page
 
@@ -1586,13 +1508,11 @@ class MyXYGridAccumulator(FeedbackNode):
         pil_images = []
         for i in range(count):
             img_tensor = page_imgs[i]
-            # Tensor shape is [H, W, C] with values 0..1
             np_img = (255. * img_tensor.cpu().numpy()).astype(np.uint8)
             pil_images.append(Image.fromarray(np_img))
 
         # 2. Prepare font
         try:
-            # Attempt to load a standard system font
             font = ImageFont.truetype("arial.ttf", f_size)
         except:
             font = ImageFont.load_default()
@@ -1600,34 +1520,146 @@ class MyXYGridAccumulator(FeedbackNode):
         # 3. Build the main image grid (rows × columns)
         grid_img = images_grid_by_columns(pil_images, max_columns=x_size, gap=gap)
 
-        # 4. Add row and column annotations
-        row_texts = row_txt.split(";") if row_txt else []
-        column_texts = col_txt.split(";") if col_txt else []
+        draw_temp = ImageDraw.Draw(grid_img)
 
-        if row_texts or column_texts:
-            grid_img = create_grid_annotation(
-                grid_img,
-                column_texts=column_texts,
-                row_texts=row_texts,
-                font=font,
-            )
+        # Settings
+        max_row_width = 400              # fixed width of left border (adjustable)
+        row_text_padding = 10
+        col_text_padding = 5
+        col_line_spacing = 5
+        row_line_spacing = 3             # intra-row line spacing
 
-        # 5. Add the page header (z_label) as a separate line on top
+        row_texts_list = row_txt.split(";") if row_txt else []
+        col_texts_list = col_txt.split(";") if col_txt else []
+
+        # --- Text wrapping function by words ---
+        def wrap_text(text, font, max_width, draw):
+            words = text.split()
+            lines = []
+            current_line = ""
+            for word in words:
+                test_line = f"{current_line} {word}".strip()
+                bbox = draw.textbbox((0, 0), test_line, font=font)
+                w = bbox[2] - bbox[0]
+                if w <= max_width:
+                    current_line = test_line
+                else:
+                    if current_line:
+                        lines.append(current_line)
+                    # Too long word — split character by character
+                    if draw.textbbox((0, 0), word, font=font)[2] > max_width:
+                        sub_line = ""
+                        for ch in word:
+                            if draw.textbbox((0, 0), sub_line + ch, font=font)[2] <= max_width:
+                                sub_line += ch
+                            else:
+                                lines.append(sub_line)
+                                sub_line = ch
+                        if sub_line:
+                            current_line = sub_line
+                        else:
+                            current_line = ""
+                    else:
+                        current_line = word
+            if current_line:
+                lines.append(current_line)
+            return lines if lines else [""]
+
+        # --- 1. Prepare column labels (wrap by width) ---
+        col_wrapped = []
+        col_label_height = 0
+        if col_texts_list:
+            col_width = pil_images[0].width + gap if pil_images else grid_img.width // x_size
+            for ct in col_texts_list:
+                lines = wrap_text(ct, font, col_width - 2 * col_text_padding, draw_temp)
+                col_wrapped.append(lines)
+                line_h = draw_temp.textbbox((0, 0), "Ay", font=font)[3] - draw_temp.textbbox((0, 0), "Ay", font=font)[1]
+                needed_h = len(lines) * (line_h + col_line_spacing) + col_text_padding
+                if needed_h > col_label_height:
+                    col_label_height = needed_h
+
+        # --- 2. Prepare row labels (wrap with height limit) ---
+        row_wrapped = []          # list of lists of lines for each row label
+        if row_texts_list:
+            # Height of one image row (including gap)
+            row_h_total = pil_images[0].height + gap
+            # Height of one text line
+            line_h = draw_temp.textbbox((0, 0), "Ay", font=font)[3] - draw_temp.textbbox((0, 0), "Ay", font=font)[1]
+            # Maximum number of lines that fit in row_h_total
+            max_lines = max(1, (row_h_total - 2 * row_text_padding) // (line_h + row_line_spacing))
+
+            for rt in row_texts_list:
+                lines = wrap_text(rt, font, max_row_width - 2 * row_text_padding, draw_temp)
+                if len(lines) > max_lines:
+                    # Keep only max_lines rows, truncate the last one with ellipsis
+                    lines = lines[:max_lines]
+                    # Truncate the last line to fit width and add '…'
+                    last_line = lines[-1] + '…'
+                    while draw_temp.textbbox((0, 0), last_line, font=font)[2] > max_row_width - 2 * row_text_padding and len(last_line) > 1:
+                        last_line = last_line[:-4] + '…'
+                    lines[-1] = last_line if last_line else '…'
+                row_wrapped.append(lines)
+        else:
+            row_wrapped = []
+
+        # --- 3. z_label (page header) ---
+        z_height = 0
         if z_label:
-            # Create a temporary 1x1 grid containing only the label image
-            # and add the annotation with z_label
-            # To maintain proportions, we could just draw text above the existing grid,
-            # but following the original pattern: create a 1x1 grid with an annotation-header
             try:
                 font_big = ImageFont.truetype("arial.ttf", int(f_size * 1.5))
             except:
                 font_big = ImageFont.load_default()
-            grid_img = create_grid_annotation(
-                grid_img,
-                column_texts=[z_label],
-                row_texts=[" "],  # Empty space on the left
-                font=font_big,
-            )
+            z_height = int(f_size * 1.5) + 20
+
+        # --- 4. Final canvas ---
+        final_w = max_row_width + grid_img.width
+        final_h = z_height + col_label_height + grid_img.height
+        final_img = Image.new("RGB", (final_w, final_h), color=(0, 0, 0))
+        draw_final = ImageDraw.Draw(final_img)
+
+        # --- 5. z_label ---
+        if z_label:
+            bbox = draw_final.textbbox((0, 0), z_label, font=font_big)
+            zw = bbox[2] - bbox[0]
+            zh = bbox[3] - bbox[1]
+            draw_final.text(((final_w - zw) // 2, (z_height - zh) // 2), z_label, font=font_big, fill=(255, 255, 255))
+
+        # --- 6. column labels ---
+        if col_texts_list:
+            col_start_x = max_row_width
+            img_w = pil_images[0].width
+            for idx, lines in enumerate(col_wrapped):
+                x_center = col_start_x + idx * (img_w + gap) + img_w // 2
+                y = z_height + col_text_padding
+                line_h = draw_final.textbbox((0, 0), "Ay", font=font)[3] - draw_final.textbbox((0, 0), "Ay", font=font)[1]
+                for line in lines:
+                    lw = draw_final.textbbox((0, 0), line, font=font)[2]
+                    draw_final.text((x_center - lw // 2, y), line, font=font, fill=(255, 255, 255))
+                    y += line_h + col_line_spacing
+
+        # --- 7. row labels (multi-line) ---
+        if row_texts_list:
+            row_h_total = pil_images[0].height + gap
+            y_start = z_height + col_label_height + gap // 2
+            for idx, lines in enumerate(row_wrapped):
+                # Vertical center of the image row
+                y_center = y_start + idx * row_h_total + row_h_total // 2
+                line_h = draw_final.textbbox((0, 0), "Ay", font=font)[3] - draw_final.textbbox((0, 0), "Ay", font=font)[1]
+                total_text_h = len(lines) * (line_h + row_line_spacing) - row_line_spacing
+                # Start drawing so the text block is vertically centered
+                current_y = y_center - total_text_h // 2
+                for line in lines:
+                    lw = draw_final.textbbox((0, 0), line, font=font)[2]
+                    # Center text horizontally within the left border
+                    x = (max_row_width - lw) // 2
+                    draw_final.text((x, current_y), line, font=font, fill=(255, 255, 255))
+                    current_y += line_h + row_line_spacing
+
+        # --- 8. Paste image grid ---
+        final_img.paste(grid_img, (max_row_width, z_height + col_label_height))
+
+        # --- 9. Replace grid_img ---
+        grid_img = final_img
 
         # 6. Convert back to ComfyUI tensor format
         final_np = np.array(grid_img).astype(np.float32) / 255.0
@@ -2549,38 +2581,38 @@ class MultiPlaceholderPromptList:
                 "Template": ("STRING", {
                     "multiline": True,
                     "default": "a girl in a {color} dress with {hair} hair",  
-                    "tooltip": "Main prompt template. Use placeholders in the form {name}."
+                    "tooltip": "Main prompt template. Use placeholders like {name}. Additional placeholders can be added below; all are equivalent and optional."
                 }),
                 "values_separator": ("STRING", {
                     "default": ",",
-                    "tooltip": "Separator used for listing values for each placeholder (supports \\n)."
+                    "tooltip": "Separator used for listing values (supports \\n). Use \\n for multi-line lists."
                 }),
                 "placeholder1": ("STRING", {
                     "default": "{color}",
-                    "tooltip": "First placeholder to replace (e.g., {color})."
+                    "tooltip": "First placeholder to replace. Optional and equivalent to other placeholders."
                 }),
                 "values1": ("STRING", {
                     "multiline": True,
                     "default": "blue, red, black",
-                    "tooltip": "List of values for the first placeholder, separated by the separator."
+                    "tooltip": "Comma-separated list of values for the first placeholder. Use '_empty_' as a value to insert an empty string."
                 }),
                 "placeholder2": ("STRING", {
                     "default": "{hair}",
-                    "tooltip": "Second placeholder to replace."
+                    "tooltip": "Second placeholder to replace. Optional and equivalent to others."
                 }),
                 "values2": ("STRING", {
                     "multiline": True,
                     "default": "blonde, brown, black",
-                    "tooltip": "List of values for the second placeholder."
+                    "tooltip": "Comma-separated list of values for the second placeholder. Use '_empty_' as a value to insert an empty string."
                 }),
                 "placeholder3": ("STRING", {
                     "default": "",
-                    "tooltip": "Third placeholder (leave empty if not needed)."
+                    "tooltip": "Third placeholder (optional)."
                 }),
                 "values3": ("STRING", {
                     "multiline": True,
                     "default": "",
-                    "tooltip": "List of values for the third placeholder."
+                    "tooltip": "Values for the third placeholder. Use '_empty_' as a value to insert an empty string in the final prompt."
                 }),
             }
         }

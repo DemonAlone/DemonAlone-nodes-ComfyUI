@@ -31,6 +31,7 @@ import comfy.sample
 import comfy.utils
 import sys
 import itertools
+from nodes import VAEDecode, PreviewImage
 
 try:
     from comfy_extras.nodes_upscale_model import ImageUpscaleWithModel
@@ -2681,3 +2682,38 @@ class MultiPlaceholderPromptList:
             results.append(cleaned_prompt.strip())
 
         return (results,)
+
+class ConditionalVAEDecodePreview:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "samples": ("LATENT",),
+                "vae": ("VAE",),
+                "preview": ("BOOLEAN", {"default": False, "tooltip": "Preview and Image Output"}),
+            },
+        }
+
+    RETURN_TYPES = ("LATENT", "IMAGE")
+    RETURN_NAMES = ("LATENT", "IMAGE")
+    FUNCTION = "process"
+    CATEGORY = "custom_nodes"
+    DESCRIPTION = "Decodes latents to images using the provided VAE when enabled, outputting both Latent and Image for previewing. When disabled, acts as a pass-through (Reroute) node, passing the original Latent unchanged without decoding."
+    OUTPUT_NODE = True
+
+    def process(self, samples, vae, preview):
+        if not preview:
+            # Return None for the image and an empty UI
+            return {"ui": {"images": []}, "result": (samples, None)}
+
+        # Perform decoding
+        decoder = VAEDecode()
+        decoded_image = decoder.decode(vae, samples)[0]
+        
+        # Use the logic of the standard PreviewImage node for generating a preview
+        # The save_images method in PreviewImage automatically handles display in the browser
+        prev = PreviewImage()
+        result = prev.save_images(images=decoded_image)
+        
+        # Add our generated image to the result for passing further
+        return {"ui": result["ui"], "result": (samples, decoded_image)}

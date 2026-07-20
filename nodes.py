@@ -2717,3 +2717,49 @@ class ConditionalVAEDecodePreview:
         
         # Add our generated image to the result for passing further
         return {"ui": result["ui"], "result": (samples, decoded_image)}
+
+class DA_AudioDebugNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "audio": ("AUDIO",),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "debug_audio"
+    CATEGORY = "debug"
+    DESCRIPTION = "Outputs audio parameters: number of channels, sample rate, duration, tensor shape."
+
+    def debug_audio(self, audio):
+        if audio is None:
+            return ("Audio is None",)
+        
+        waveform = audio.get("waveform")
+        sample_rate = audio.get("sample_rate")
+        
+        if waveform is None:
+            return ("Audio has no waveform",)
+        
+        # Get dimensions
+        shape = tuple(waveform.shape)
+        # Number of channels – usually second parameter (batch, channels, samples) or (channels, samples)
+        if len(shape) == 3:
+            batch, channels, samples = shape
+        elif len(shape) == 2:
+            channels, samples = shape
+            batch = 1
+        else:
+            return (f"Unexpected shape: {shape}",)
+        
+        duration = samples / sample_rate if sample_rate else 0.0
+        
+        info = (
+            f"Shape: {shape}\n"
+            f"Channels: {channels}\n"
+            f"Sample rate: {sample_rate} Hz\n"
+            f"Samples: {samples}\n"
+            f"Duration: {duration:.2f} s"
+        )
+        return (info,)

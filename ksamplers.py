@@ -1,4 +1,5 @@
 import torch
+from torch.nn import functional as F
 import comfy.samplers
 import comfy.model_management
 import comfy.sample

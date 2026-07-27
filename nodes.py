@@ -9,14 +9,13 @@ from nodes import VAEDecode, PreviewImage
 
 class OptionalCondMergeNode:
     """
-    Smart "merge" for conditioning.
+    Smart "merge" for conditioning (collector of parallel ControlNet branches).
     - inputs: cond1, cond2, cond3 (optional)
-    - output: one merged-conditioning
+    - output: one merged list of conditions
     """
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            # no required inputs – everything is optional
             "required": {},
             "optional": {
                 "cond1": ("CONDITIONING",),
@@ -28,39 +27,27 @@ class OptionalCondMergeNode:
     RETURN_TYPES = ("CONDITIONING",)
     FUNCTION     = "merge"
     CATEGORY     = "conditioning"    
-    DESCRIPTION = "Merges 1 to 3 conditioning inputs (text embeddings) into a single output by averaging their weights and layering them element-wise. Automatically calculates the blend weight based on the number of active connections, ensuring seamless integration of multiple conditioning signals without manual scaling."
+    DESCRIPTION = "Merges from 1 to 3 conditions (e.g., parallel ControlNet branches) into a single stream without mathematical distortion of tensors."
 
     def merge(self, **kwargs):
-        """
-        kwargs is a dict: {'cond1': ..., 'cond2': ..., 'cond3': ...}
-        If an input is not connected it will be None.
-        """
-        # 1️. Collect only the ones that exist
+        # Collect only inputs actually connected
         conds = [c for c in (kwargs.get('cond1'),
                             kwargs.get('cond2'),
                             kwargs.get('cond3')) if c is not None]
 
-        n = len(conds)
-        if n == 0:
-            # Node has no connections – return None.
-            # When muted, ComfyUI simply ignores this output.
+        # Collect only inputs actually connected
+        if not conds:
             return (None,)
 
-        weight = 1.0 / n          # automatically calculated weight
+        # If only 1 input is connected - node acts as a Reroute (passes through unchanged)
+        if len(conds) == 1:
+            return (conds[0],)
 
-        # 2️. Merge conditioning layer‑by‑layer
-        # Each conditioning is a list of tuples: [(tensor, meta), ...]
+        # If multiple inputs - concatenate them into a single list
+        # This preserves all metadata and Apply ControlNet settings intact
         merged = []
-        for layer_idx in range(len(conds[0])):
-
-            # take the tensor from each input and multiply by weight
-            tensors_for_layer = [c[layer_idx][0] * weight for c in conds]
-
-            # sum element‑wise across all inputs
-            summed_tensor = torch.sum(torch.stack(tensors_for_layer), dim=0)
-
-            # keep metadata from the first conditioning (usually scale, etc.)
-            merged.append((summed_tensor, conds[0][layer_idx][1]))
+        for c in conds:
+            merged.extend(c)
 
         return (merged,)
 

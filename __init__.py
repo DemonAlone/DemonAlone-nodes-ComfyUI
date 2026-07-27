@@ -1,57 +1,81 @@
 from .nodes import (
+    ConditionalVAEDecodePreview,
+    DA_BusInNode,
+    DA_BusOutNode,
+    DA_LatentLoader,
+    MultiPlaceholderPromptList,
+    OptionalCondMergeNode,
+    PatchModelSelectorNode,
+    
+)
+
+from .adapters import (
     AnyAdapterNode,
     AnyConcatNode,
     AnytoIntegerAdapterNode,
     AnytoFloatAdapterNode,
-    BooleanSwitchNode,
-    CheckpointSelectorNode,
-    ClipSkipSliderNode,
-    ConditionalVAEDecodePreview,
-    CountListNode,
-    DA_AudioDebugNode,
-    DA_Base_KSampler,
-    DA_BusInNode,
-    DA_BusOutNode,
-    DA_Enhanced_KSampler,
-    DA_LatentLoader,
-    DiffusionModelGeneratorNode,
-    DiffusionModelSelectorNode,
-    ImageResizeNode,
-    FloatSelectorNode,
-    ListCreaterNode,
-    ListRerouteNode,
-    ListCombinerNode,
-    LoadImageWithMetadataNode,
-    LORASelectorNode,
-    MaskDebugNode,
-    ModelGeneratorNode,
-    MultiPlaceholderPromptList,
-    MyXYZHelper,
-    MyXYGridAccumulator,
-    MyXYZSuperStacker,
-    OptionalCondMergeNode,
-    PatchModelSelectorNode,
-    PonyPrefixesNode,
-    ResizeMethodControlNode,
-    ResizeInterpolationControlNode,
-    SamplerSelectorFromStringNode,
-    SamplerGeneratorNode,
-    SaveImageNoMetaNode, 
-    ScaleImageAspectNode, 
-    SchedulerSelectorFromStringNode,
-    SchedulerGeneratorNode,
-    ShiftSliderNode,
     StringToAnyNode,
     StringToIntNode,
     StringToFloatNode,
     TextConcatNode,
+)
+
+from .debug_tools import (
+    DA_AudioDebugNode,
+    MaskDebugNode,
+)
+from .image_utilites import (
+    ImageResizeNode,
+    LoadImageWithMetadataNode,
+    ResizeMethodControlNode,
+    ResizeInterpolationControlNode,
+    SaveImageNoMetaNode, 
+)
+
+from .other_list_tools import (
+    CountListNode,
+    ListCreaterNode,
+    ListRerouteNode,
+    ListCombinerNode,
+)
+
+from .ksamplers import (
+    DA_Base_KSampler,
+    DA_Enhanced_KSampler,
+    DA_TiledUpscaler,
+    
+)
+
+from .other_selectors import (
+    BooleanSwitchNode,
+    ClipSkipSliderNode,
+    FloatSelectorNode,
+    PonyPrefixesNode,
+    ShiftSliderNode,
+    WanNumFramesNode,
+)
+
+from .xyz_plot import (
+    MyXYZHelper,
+    MyXYGridAccumulator,
+    MyXYZSuperStacker,
+    XYZConflictValidatorAndSwitch,
+)
+
+from .xyz_selectors_and_generators import (
+    CheckpointSelectorNode,
+    DiffusionModelGeneratorNode,
+    DiffusionModelSelectorNode,
+    LORASelectorNode,
+    ModelGeneratorNode,
+    SamplerSelectorFromStringNode,
+    SamplerGeneratorNode,
+    SchedulerSelectorFromStringNode,
+    SchedulerGeneratorNode,
     TextEncoderSelectorNode,
     TextEncoderGeneratorNode,
-    DA_TiledUpscaler,
     VAEGeneratorNode,
     VAESelectorNode,
-    WanNumFramesNode,
-    XYZConflictValidatorAndSwitch,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -70,6 +94,7 @@ NODE_CLASS_MAPPINGS = {
     "DA_BusOutNode": DA_BusOutNode,
     "DA_Enhanced_KSampler": DA_Enhanced_KSampler,
     "DA_LatentLoader": DA_LatentLoader,
+    "DA_TiledUpscaler": DA_TiledUpscaler,
     "DiffusionModelGeneratorNode": DiffusionModelGeneratorNode,
     "DiffusionModelSelectorNode": DiffusionModelSelectorNode,
     "ImageResizeNode": ImageResizeNode,
@@ -93,7 +118,6 @@ NODE_CLASS_MAPPINGS = {
     "SamplerGeneratorNode": SamplerGeneratorNode,
     "SamplerSelectorFromStringNode": SamplerSelectorFromStringNode,
     "SaveImageNoMetaNode": SaveImageNoMetaNode, 
-    "ScaleImageAspectNode": ScaleImageAspectNode, 
     "SchedulerGeneratorNode": SchedulerGeneratorNode,
     "SchedulerSelectorFromStringNode": SchedulerSelectorFromStringNode,
     "ShiftSliderNode": ShiftSliderNode,
@@ -103,7 +127,6 @@ NODE_CLASS_MAPPINGS = {
     "TextConcatNode": TextConcatNode,
     "TextEncoderGeneratorNode": TextEncoderGeneratorNode,
     "TextEncoderSelectorNode": TextEncoderSelectorNode,
-    "DA_TiledUpscaler": DA_TiledUpscaler,
     "VAEGeneratorNode": VAEGeneratorNode, 
     "VAESelectorNode": VAESelectorNode,
     "WanNumFramesNode": WanNumFramesNode,
@@ -126,10 +149,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DA_BusOutNode": "BusOut",
     "DA_Enhanced_KSampler": "DA_Enhanced_KSampler",
     "DA_LatentLoader": "Latent Loader",
+    "DA_TiledUpscaler": "Tiled Upscaler (experemental)",
     "DiffusionModelGeneratorNode": "Dynamic Diffusion Model Selector",
     "DiffusionModelSelectorNode": "Diffusion Model Selector",
     "ImageResizeNode": "Image and Mask Resize",
-    "FloatSelectorNode": "Float Selector",
+    "FloatSelectorNode": "Float Selector (legacy)",
     "ListCombinerNode": "List Combiner",
     "ListCreaterNode": "List Creater",
     "ListRerouteNode": "List Reroute",
@@ -159,7 +183,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TextConcatNode": "Text Concatenator",
     "TextEncoderGeneratorNode": "Dynamic Encoder Selector",
     "TextEncoderSelectorNode": "Text Encoder Selector",
-    "DA_TiledUpscaler": "Tiled Upscaler (experemental)",
     "VAEGeneratorNode": "Dynamic VAE Selector", 
     "VAESelectorNode": "VAE Selector",
     "WanNumFramesNode": " Wan Number of Frames",

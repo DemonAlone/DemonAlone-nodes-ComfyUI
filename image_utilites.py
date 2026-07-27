@@ -5,9 +5,10 @@ import fnmatch
 import logging
 from datetime import datetime
 from pathlib import Path
-
+import comfy.utils
 import torch
 import numpy as np
+from torch.nn import functional as F
 from PIL import Image, ImageOps
 from PIL.JpegImagePlugin import JpegImageFile
 from PIL.PngImagePlugin import PngImageFile
@@ -18,18 +19,9 @@ import folder_paths
 
 logger = logging.getLogger(__name__)
 
+# ImageResizeNode is based on  Image Resize from https://github.com/cubiq/ComfyUI_essentials
 
 class ImageResizeNode:
-    
-    # ImageResizeNode is based on 🔧 Image Resize from Efficiency Nodes
-    """
-    # Efficiency Nodes - A collection of my ComfyUI custom nodes to help streamline workflows and reduce total node count.
-    # by Luciano Cirino (Discord: TSC#9184) - April 2023 - October 2023
-    # https://github.com/LucianoCirino/efficiency-nodes-comfyui
-    Resize an image and a mask synchronously.
-    The mask is resized with nearest‑neighbor to keep its binary nature.
-    """
-    
     @classmethod
     def INPUT_TYPES(cls):
         return {

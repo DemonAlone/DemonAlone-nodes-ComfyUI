@@ -10,40 +10,39 @@ from PIL.PngImagePlugin import PngImageFile
 import os
 import folder_paths
 
-def images_grid_by_columns(
+def images_grid_by_x(
     images: list,
-    max_columns: int,
+    max_x_items: int,
     gap: int = 0,
     bg_color: tuple = (0, 0, 0),
     ) -> Image.Image:
     """
-    Creates a grid layout from a list of PIL images.
-    max_columns - maximum number of columns in the grid
-    gap - spacing between columns
+    Creates a grid layout from a list of PIL images based on X axis (columns).
+    max_x_items - maximum number of items in a row (axis X)
+    gap - spacing between items
     bg_color - background color for the grid
     """
     if not images:
         raise ValueError("List of images is empty")
 
     n = len(images)
-    columns = min(max_columns, n) # Limit to maximum allowed columns
-    rows = (n + columns - 1) // columns # Limit to maximum allowed columns
+    x_count = min(max_x_items, n) # Limit to maximum allowed X items
+    y_count = (n + x_count - 1) // x_count # Limit to maximum allowed Y rows
 
-    # Limit to maximum allowed columns
     cell_w = max(img.width for img in images)
     cell_h = max(img.height for img in images)
 
-    total_w = columns * cell_w + (columns - 1) * gap
-    total_h = rows * cell_h + (rows - 1) * gap
-    # Limit to maximum allowed columns
+    total_w = x_count * cell_w + (x_count - 1) * gap
+    total_h = y_count * cell_h + (y_count - 1) * gap
+    
     grid = Image.new("RGB", (total_w, total_h), bg_color)
     
     # Place each image into its appropriate position in the grid
     for idx, img in enumerate(images):
-        row = idx // columns
-        col = idx % columns
-        x = col * (cell_w + gap)
-        y = row * (cell_h + gap)
+        y_idx = idx // x_count
+        x_idx = idx % x_count
+        x = x_idx * (cell_w + gap)
+        y = y_idx * (cell_h + gap)
         # Center the image within its cell
         offset_x = (cell_w - img.width) // 2
         offset_y = (cell_h - img.height) // 2
@@ -51,7 +50,7 @@ def images_grid_by_columns(
 
     return grid
 
-#feedbackNode, MyXYZHelper, MyXYGridAccumulator,  MyXYZSuperStacker nodes based on nodes from  https://github.com/kenjiqq/qq-nodes-comfyui
+#feedbackNode, MyXYZHelper, MyXYGridAccumulator, MyXYZSuperStacker nodes based on nodes from https://github.com/kenjiqq/qq-nodes-comfyui
 # --- BASE CLASS FOR PREVIEW ---
 class FeedbackNode:
     def __init__(self):
@@ -89,65 +88,66 @@ class MyXYZHelper:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "row_list": ("LIST",),
-                "column_list": ("LIST",),
-                "page_list": ("LIST",),
+                "x_list": ("LIST",),
+                "y_list": ("LIST",),
+                "z_list": ("LIST",),
                 "index": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             },
             "optional": {
-                "row_prefix": ("STRING", {"default": ""}),
-                "column_prefix": ("STRING", {"default": ""}),
-                "page_prefix": ("STRING", {"default": ""}),
+                "x_prefix": ("STRING", {"default": ""}),
+                "y_prefix": ("STRING", {"default": ""}),
+                "z_prefix": ("STRING", {"default": ""}),
                 "font_size": ("INT", {"default": 20, "min": 10, "max": 40}),
                 "grid_gap": ("INT", {"default": 20, "max": 100}),
             }
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING", "XYZ_GRID_CONTROL")
-    RETURN_NAMES = ("row_value", "column_value", "page_value", "XYZ_GRID_CONTROL")
+    RETURN_NAMES = ("x_value", "y_value", "z_value", "XYZ_GRID_CONTROL")
     FUNCTION = "run"
     CATEGORY = "Utils"
-    DESCRIPTION = "Orchestrates the grid layout by mapping the current execution index to specific row, column, and page values. Dynamically generates annotations (e.g., 'Value: 5') for the XYZ plot headers based on input lists and styling parameters."
+    DESCRIPTION = "Orchestrates the grid layout by mapping the current execution index to specific X, Y, and Z values. Dynamically generates annotations for the XYZ plot headers based on input lists and styling parameters."
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
         return float("NaN")
 
-    def run(self, row_list, column_list, page_list, index, **kwargs):
+    def run(self, x_list, y_list, z_list, index, **kwargs):
         force_reset = (index == 0) or (index < self._last_index)
         self._last_index = index
 
-        len_x, len_y, len_z = len(column_list), len(row_list), len(page_list)
+        len_x, len_y, len_z = len(x_list), len(y_list), len(z_list)
         total_per_page = len_x * len_y
         
         z_idx = (index // total_per_page) % len_z
         adj_idx = index % total_per_page
-        row_idx = (adj_idx // len_x) % len_y
-        col_idx = adj_idx % len_x
+        
+        y_idx = adj_idx % len_y
+        x_idx = (adj_idx // len_y) % len_x
 
-        r_pre = kwargs.get('row_prefix', "")
-        c_pre = kwargs.get('column_prefix', "")
-        p_pre = kwargs.get('page_prefix', "")
+        x_pre = kwargs.get('x_prefix', "")
+        y_pre = kwargs.get('y_prefix', "")
+        z_pre = kwargs.get('z_prefix', "")
 
-        row_ann = ";".join([f"{r_pre}: {str(x)}" if r_pre else str(x) for x in row_list])
-        col_ann = ";".join([f"{c_pre}: {str(y)}" if c_pre else str(y) for y in column_list])
-        page_label = f"{p_pre}: {str(page_list[z_idx])}" if p_pre else str(page_list[z_idx])
+        x_ann = ";".join([f"{x_pre}: {str(v)}" if x_pre else str(v) for v in x_list])
+        y_ann = ";".join([f"{y_pre}: {str(v)}" if y_pre else str(v) for v in y_list])
+        z_label = f"{z_pre}: {str(z_list[z_idx])}" if z_pre else str(z_list[z_idx])
 
         XYZ_GRID_CONTROL = (
             total_per_page, 
             0 if force_reset else adj_idx, 
-            row_ann, 
-            col_ann, 
-            len_x, 
+            y_ann, # Passing vertical headers
+            x_ann, # Passing horizontal headers
+            len_x, # Grid width (number of columns along the X axis)
             kwargs.get('font_size', 50), 
             kwargs.get('grid_gap', 20),
-            page_label,
+            z_label,
             z_idx,
             len_z,
             0 if force_reset else index
         )
 
-        return (row_list[row_idx], column_list[col_idx], page_list[z_idx], XYZ_GRID_CONTROL)
+        return (x_list[x_idx], y_list[y_idx], z_list[z_idx], XYZ_GRID_CONTROL)
 
 # --- 2. ACCUMULATOR---
 class MyXYGridAccumulator(FeedbackNode):
@@ -171,7 +171,7 @@ class MyXYGridAccumulator(FeedbackNode):
     DESCRIPTION = "Buffers individual images into a visual grid as the XYZ loop progresses. Handles the accumulation of images per page, renders the preview grid with axis labels when full, and clears the batch upon completion of each slice."
 
     def run(self, images, XYZ_GRID_CONTROL, show_previews, unique_id):
-        count, reset_val, row_txt, col_txt, x_size, f_size, gap, z_label, *_ = XYZ_GRID_CONTROL
+        count, reset_val, y_txt, x_txt, x_size, f_size, gap, z_label, *_ = XYZ_GRID_CONTROL
         
         if reset_val == 0:
             MyXYGridAccumulator.image_batch = images
@@ -209,20 +209,20 @@ class MyXYGridAccumulator(FeedbackNode):
         except:
             font = ImageFont.load_default()
 
-        # 3. Build the main image grid (rows × columns)
-        grid_img = images_grid_by_columns(pil_images, max_columns=x_size, gap=gap)
+        # 3. Build the main image grid using X axis sizing
+        grid_img = images_grid_by_x(pil_images, max_x_items=x_size, gap=gap)
 
         draw_temp = ImageDraw.Draw(grid_img)
 
         # Settings
-        max_row_width = 400              # fixed width of left border (adjustable)
-        row_text_padding = 10
-        col_text_padding = 5
-        col_line_spacing = 5
-        row_line_spacing = 3             # intra-row line spacing
+        max_y_width = 400                # fixed width of left border (adjustable for Y axis labels)
+        y_text_padding = 10
+        x_text_padding = 5
+        x_line_spacing = 5
+        y_line_spacing = 3               # intra-line spacing for Y labels
 
-        row_texts_list = row_txt.split(";") if row_txt else []
-        col_texts_list = col_txt.split(";") if col_txt else []
+        y_texts_list = y_txt.split(";") if y_txt else []
+        x_texts_list = x_txt.split(";") if x_txt else []
 
         # --- Text wrapping function by words ---
         def wrap_text(text, font, max_width, draw):
@@ -257,44 +257,39 @@ class MyXYGridAccumulator(FeedbackNode):
                 lines.append(current_line)
             return lines if lines else [""]
 
-        # --- 1. Prepare column labels (wrap by width) ---
-        col_wrapped = []
-        col_label_height = 0
-        if col_texts_list:
-            col_width = pil_images[0].width + gap if pil_images else grid_img.width // x_size
-            for ct in col_texts_list:
-                lines = wrap_text(ct, font, col_width - 2 * col_text_padding, draw_temp)
-                col_wrapped.append(lines)
+        # --- 1. Prepare X axis labels (top headers) ---
+        x_wrapped = []
+        x_label_height = 0
+        if x_texts_list:
+            cell_w = pil_images[0].width + gap if pil_images else grid_img.width // x_size
+            for xt in x_texts_list:
+                lines = wrap_text(xt, font, cell_w - 2 * x_text_padding, draw_temp)
+                x_wrapped.append(lines)
                 line_h = draw_temp.textbbox((0, 0), "Ay", font=font)[3] - draw_temp.textbbox((0, 0), "Ay", font=font)[1]
-                needed_h = len(lines) * (line_h + col_line_spacing) + col_text_padding
-                if needed_h > col_label_height:
-                    col_label_height = needed_h
+                needed_h = len(lines) * (line_h + x_line_spacing) + x_text_padding
+                if needed_h > x_label_height:
+                    x_label_height = needed_h
 
-        # --- 2. Prepare row labels (wrap with height limit) ---
-        row_wrapped = []          # list of lists of lines for each row label
-        if row_texts_list:
-            # Height of one image row (including gap)
-            row_h_total = pil_images[0].height + gap
-            # Height of one text line
+        # --- 2. Prepare Y axis labels (left side headers) ---
+        y_wrapped = []          
+        if y_texts_list:
+            cell_h_total = pil_images[0].height + gap
             line_h = draw_temp.textbbox((0, 0), "Ay", font=font)[3] - draw_temp.textbbox((0, 0), "Ay", font=font)[1]
-            # Maximum number of lines that fit in row_h_total
-            max_lines = max(1, (row_h_total - 2 * row_text_padding) // (line_h + row_line_spacing))
+            max_lines = max(1, (cell_h_total - 2 * y_text_padding) // (line_h + y_line_spacing))
 
-            for rt in row_texts_list:
-                lines = wrap_text(rt, font, max_row_width - 2 * row_text_padding, draw_temp)
+            for yt in y_texts_list:
+                lines = wrap_text(yt, font, max_y_width - 2 * y_text_padding, draw_temp)
                 if len(lines) > max_lines:
-                    # Keep only max_lines rows, truncate the last one with ellipsis
                     lines = lines[:max_lines]
-                    # Truncate the last line to fit width and add '…'
                     last_line = lines[-1] + '…'
-                    while draw_temp.textbbox((0, 0), last_line, font=font)[2] > max_row_width - 2 * row_text_padding and len(last_line) > 1:
+                    while draw_temp.textbbox((0, 0), last_line, font=font)[2] > max_y_width - 2 * y_text_padding and len(last_line) > 1:
                         last_line = last_line[:-4] + '…'
                     lines[-1] = last_line if last_line else '…'
-                row_wrapped.append(lines)
+                y_wrapped.append(lines)
         else:
-            row_wrapped = []
+            y_wrapped = []
 
-        # --- 3. z_label (page header) ---
+        # --- 3. Z label (page header) ---
         z_height = 0
         if z_label:
             try:
@@ -304,51 +299,48 @@ class MyXYGridAccumulator(FeedbackNode):
             z_height = int(f_size * 1.5) + 20
 
         # --- 4. Final canvas ---
-        final_w = max_row_width + grid_img.width
-        final_h = z_height + col_label_height + grid_img.height
+        final_w = max_y_width + grid_img.width
+        final_h = z_height + x_label_height + grid_img.height
         final_img = Image.new("RGB", (final_w, final_h), color=(0, 0, 0))
         draw_final = ImageDraw.Draw(final_img)
 
-        # --- 5. z_label ---
+        # --- 5. Draw Z label ---
         if z_label:
             bbox = draw_final.textbbox((0, 0), z_label, font=font_big)
             zw = bbox[2] - bbox[0]
             zh = bbox[3] - bbox[1]
             draw_final.text(((final_w - zw) // 2, (z_height - zh) // 2), z_label, font=font_big, fill=(255, 255, 255))
 
-        # --- 6. column labels ---
-        if col_texts_list:
-            col_start_x = max_row_width
+        # --- 6. Draw X axis labels ---
+        if x_texts_list:
+            x_start_x = max_y_width
             img_w = pil_images[0].width
-            for idx, lines in enumerate(col_wrapped):
-                x_center = col_start_x + idx * (img_w + gap) + img_w // 2
-                y = z_height + col_text_padding
+            for idx, lines in enumerate(x_wrapped):
+                x_center = x_start_x + idx * (img_w + gap) + img_w // 2
+                y = z_height + x_text_padding
                 line_h = draw_final.textbbox((0, 0), "Ay", font=font)[3] - draw_final.textbbox((0, 0), "Ay", font=font)[1]
                 for line in lines:
                     lw = draw_final.textbbox((0, 0), line, font=font)[2]
                     draw_final.text((x_center - lw // 2, y), line, font=font, fill=(255, 255, 255))
-                    y += line_h + col_line_spacing
+                    y += line_h + x_line_spacing
 
-        # --- 7. row labels (multi-line) ---
-        if row_texts_list:
-            row_h_total = pil_images[0].height + gap
-            y_start = z_height + col_label_height + gap // 2
-            for idx, lines in enumerate(row_wrapped):
-                # Vertical center of the image row
-                y_center = y_start + idx * row_h_total + row_h_total // 2
+        # --- 7. Draw Y axis labels ---
+        if y_texts_list:
+            cell_h_total = pil_images[0].height + gap
+            y_start = z_height + x_label_height + gap // 2
+            for idx, lines in enumerate(y_wrapped):
+                y_center = y_start + idx * cell_h_total + cell_h_total // 2
                 line_h = draw_final.textbbox((0, 0), "Ay", font=font)[3] - draw_final.textbbox((0, 0), "Ay", font=font)[1]
-                total_text_h = len(lines) * (line_h + row_line_spacing) - row_line_spacing
-                # Start drawing so the text block is vertically centered
+                total_text_h = len(lines) * (line_h + y_line_spacing) - y_line_spacing
                 current_y = y_center - total_text_h // 2
                 for line in lines:
                     lw = draw_final.textbbox((0, 0), line, font=font)[2]
-                    # Center text horizontally within the left border
-                    x = (max_row_width - lw) // 2
+                    x = (max_y_width - lw) // 2
                     draw_final.text((x, current_y), line, font=font, fill=(255, 255, 255))
-                    current_y += line_h + row_line_spacing
+                    current_y += line_h + y_line_spacing
 
         # --- 8. Paste image grid ---
-        final_img.paste(grid_img, (max_row_width, z_height + col_label_height))
+        final_img.paste(grid_img, (max_y_width, z_height + x_label_height))
 
         # --- 9. Replace grid_img ---
         grid_img = final_img
@@ -409,9 +401,9 @@ class XYZConflictValidatorAndSwitch:
                 "global_val": ("*",), 
             },
             "optional": {
-                "row": ("*",),
-                "column": ("*",),
-                "pages": ("*",),
+                "x": ("*",),
+                "y": ("*",),
+                "z": ("*",),
             }
         }
 
@@ -419,7 +411,7 @@ class XYZConflictValidatorAndSwitch:
     RETURN_NAMES = ("output",)
     FUNCTION = "execute"
     CATEGORY = "utils/XYZ"
-    DESCRIPTION = "Safeguards the XYZ pipeline against type mismatches by enforcing that only one active parameter exists per execution step. Automatically casts and outputs the current grid value (Row, Column, or Page) as an Int, Float, or String based on configuration."
+    DESCRIPTION = "Safeguards the XYZ pipeline against type mismatches by enforcing that only one active parameter exists per execution step. Automatically casts and outputs the current grid value (X, Y, or Z) as an Int, Float, or String based on configuration."
     
     def execute(self, output_type, global_val, **kwargs):
         # 1. Multiple choice check (Axis conflict)

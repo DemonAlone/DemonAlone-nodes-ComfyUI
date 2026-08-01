@@ -322,7 +322,7 @@ class LORASelectorNode:
                     "default": 1.0,
                     "min": 0.00,
                     "max": 10.00,
-                    "step": 0.01,
+                    "step": 0.05,
                 },
             )
         return inputs

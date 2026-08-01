@@ -58,7 +58,7 @@ class SamplerGeneratorNode:
     @classmethod
     def INPUT_TYPES(cls):
         samplers = get_sampler_list()
-        inputs = {"required": {f"sampler_{i+1}": (samplers, {"default": "none"}) for i in range(10)}}
+        inputs = {"required": {f"sampler_{i+1}": (samplers, {"default": "none"}) for i in range(14)}}
         return inputs
     RETURN_TYPES = ("STRING", "LIST")  
     FUNCTION = "generate_string"
@@ -66,7 +66,7 @@ class SamplerGeneratorNode:
     DESCRIPTION = "Generates a comma-separated string and list of any selected samplers from up to 10 inputs. Useful for dynamically constructing sampler lists based on user selection before feeding them into sampling nodes."
     def generate_string(self, **kwargs):
         selected = []
-        for i in range(10):
+        for i in range(14):
             name = kwargs.get(f"sampler_{i+1}")
             if name and name != "none": selected.append(name)
         string_output = ", ".join(selected)

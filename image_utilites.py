@@ -312,22 +312,28 @@ class LoadImageWithMetadataNode:
         exclude_files  = {"Thumbs.db", "*.DS_Store", "desktop.ini", "*.lock"}
         exclude_folders = {"clipspace", ".*"}
 
+        valid_extensions = ('.jpg', '.jpeg', '.png', '.webp', 'bmp', 'tiff', 'tif')
         file_list = []
 
         for root, dirs, files in os.walk(input_dir, followlinks=True):
-            dirs[:]   = [d for d in dirs if not any(fnmatch.fnmatch(d, e) for e in exclude_folders)]
-            files     = [f for f in files if not any(fnmatch.fnmatch(f, e) for e in exclude_files)]
-
+            # Exclude hidden and service folders
+            dirs[:] = [d for d in dirs if not any(fnmatch.fnmatch(d, e) for e in exclude_folders)]
+            
+            # Exclude system files and filter by extension
             for file in files:
-                relpath = os.path.relpath(os.path.join(root, file), start=input_dir)
-                relpath = relpath.replace("\\", "/")          # windows patch
-                file_list.append(relpath)
+                # Skipping system files
+                if any(fnmatch.fnmatch(file, e) for e in exclude_files):
+                    continue
+                # Checking the extension
+                ext = os.path.splitext(file)[1].lower()
+                if ext in valid_extensions:
+                    relpath = os.path.relpath(os.path.join(root, file), start=input_dir)
+                    relpath = relpath.replace("\\", "/") # windows patch
+                    file_list.append(relpath)
 
         return {"required": {"image": (sorted(file_list), {"image_upload": True})}}
 
     CATEGORY = "Image"
-
-    # 4 outputs: image, mask, full RAW metadata, and 'clean' set only with parameters
     RETURN_TYPES = ("IMAGE", "MASK", "METADATA_RAW", "METADATA_CLEAN")
     RETURN_NAMES = ("image", "mask", "Metadata RAW", "Metadata Clean")
     DESCRIPTION = "Loads an image from the input directory, applies EXIF orientation correction, and outputs the image tensor along with an alpha mask (if present). Additionally, it provides both full raw metadata and a filtered 'clean' version containing only essential parameters for downstream workflows."

@@ -312,7 +312,7 @@ class LoadImageWithMetadataNode:
         exclude_files  = {"Thumbs.db", "*.DS_Store", "desktop.ini", "*.lock"}
         exclude_folders = {"clipspace", ".*"}
 
-        valid_extensions = ('.jpg', '.jpeg', '.png', '.webp')
+        valid_extensions = ('.jpg', '.jpeg', '.png', '.webp', 'bmp', 'tiff', 'tif')
         file_list = []
 
         for root, dirs, files in os.walk(input_dir, followlinks=True):

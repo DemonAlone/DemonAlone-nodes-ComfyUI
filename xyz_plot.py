@@ -9,6 +9,7 @@ from PIL.ExifTags import TAGS, GPSTAGS, IFD
 from PIL.PngImagePlugin import PngImageFile
 import os
 import folder_paths
+import time
 
 def images_grid_by_x(
     images: list,
@@ -97,7 +98,7 @@ class MyXYZHelper:
                 "x_prefix": ("STRING", {"default": ""}),
                 "y_prefix": ("STRING", {"default": ""}),
                 "z_prefix": ("STRING", {"default": ""}),
-                "font_size": ("INT", {"default": 20, "min": 10, "max": 40}),
+                "font_size": ("INT", {"default": 30, "min": 10, "max": 40}),
                 "grid_gap": ("INT", {"default": 20, "max": 100}),
             }
         }
@@ -160,19 +161,23 @@ class MyXYGridAccumulator(FeedbackNode):
                 "images": ("IMAGE",),
                 "XYZ_GRID_CONTROL": ("XYZ_GRID_CONTROL",),
                 "show_previews": ("BOOLEAN", {"default": True}),
+                "max_preview_mp": ("FLOAT", {"default": 15.0, "min": 4.0, "max": 18.0, "step": 0.1, "tooltip": "Megapixel limit for resized preview. If total pixels exceed this, the page is scaled down"}),
+                "max_preview_side": ("INT", {"default": 8192, "min": 2048, "max": 16384, "step": 128, "tooltip": "Maximum width/height in pixels for resized preview. If either side exceeds this, the page is scaled down."}),
             },
             "hidden": {"unique_id": "UNIQUE_ID"}
         }
 
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("images",)
+    RETURN_TYPES = ("IMAGE", "IMAGE")
+    RETURN_NAMES = ("full_page", "resized_page")
     FUNCTION = "run"
     CATEGORY = "Utils"
     DESCRIPTION = "Buffers individual images into a visual grid as the XYZ loop progresses. Handles the accumulation of images per page, renders the preview grid with axis labels when full, and clears the batch upon completion of each slice."
 
-    def run(self, images, XYZ_GRID_CONTROL, show_previews, unique_id):
+    def run(self, images, XYZ_GRID_CONTROL, show_previews, max_preview_mp, max_preview_side, unique_id):
+        # Unpacking controls
         count, reset_val, y_txt, x_txt, x_size, f_size, gap, z_label, *_ = XYZ_GRID_CONTROL
         
+        # --- 1. Batch accumulation ---
         if reset_val == 0:
             MyXYGridAccumulator.image_batch = images
         else:
@@ -186,177 +191,209 @@ class MyXYGridAccumulator(FeedbackNode):
         
         curr_num = MyXYGridAccumulator.image_batch.shape[0]
 
+        # If the page is not yet filled, block execution (and optionally show previews of individual cells)
         if curr_num < count:
             ui_res = []
             if show_previews:
                 preview_list = [MyXYGridAccumulator.image_batch[i] for i in range(curr_num)]
                 ui_res = self.preview_images(preview_list)
-            return {"result": (ExecutionBlocker(None),), "ui": {"images": ui_res}}
+            return {"result": (ExecutionBlocker(None), ExecutionBlocker(None)), "ui": {"images": ui_res}}
 
+        # --- 2. the page is full - create a grid ---
         page_imgs = MyXYGridAccumulator.image_batch[:count]
         MyXYGridAccumulator.image_batch = torch.Tensor()  # Clear for the next page
 
-        # 1. Convert tensors to PIL.Image
+        # Convert tensors to PIL.Image
         pil_images = []
         for i in range(count):
             img_tensor = page_imgs[i]
             np_img = (255. * img_tensor.cpu().numpy()).astype(np.uint8)
             pil_images.append(Image.fromarray(np_img))
 
-        # 2. Prepare font
+        # Prepare font
         try:
             font = ImageFont.truetype("arial.ttf", f_size)
+            font_big = ImageFont.truetype("arial.ttf", int(f_size * 1.5))
         except:
             font = ImageFont.load_default()
+            font_big = font
 
-        # 3. Build the main image grid using X axis sizing
-        grid_img = images_grid_by_x(pil_images, max_x_items=x_size, gap=gap)
+        # --- 3. Basic grid (cells only, no labels) ---
+        base_grid = images_grid_by_x(pil_images, max_x_items=x_size, gap=gap)
+        base_w, base_h = base_grid.size
+        
+        # --- 4. Function for drawing labels on the passed grid ---
+        def add_labels_to_grid(grid_img, x_texts, y_texts, z_label, font, font_big, gap, cell_w, cell_h, y_count, x_count, max_y_width=400):
+            img = grid_img.copy()
+            draw = ImageDraw.Draw(img)
+            
+            # Settings
+            x_text_padding = 5
+            y_text_padding = 10
+            x_line_spacing = 5
+            y_line_spacing = 3               # intra-line spacing for Y labels
 
-        draw_temp = ImageDraw.Draw(grid_img)
-
-        # Settings
-        max_y_width = 400                # fixed width of left border (adjustable for Y axis labels)
-        y_text_padding = 10
-        x_text_padding = 5
-        x_line_spacing = 5
-        y_line_spacing = 3               # intra-line spacing for Y labels
-
-        y_texts_list = y_txt.split(";") if y_txt else []
-        x_texts_list = x_txt.split(";") if x_txt else []
-
-        # --- Text wrapping function by words ---
-        def wrap_text(text, font, max_width, draw):
-            words = text.split()
-            lines = []
-            current_line = ""
-            for word in words:
-                test_line = f"{current_line} {word}".strip()
-                bbox = draw.textbbox((0, 0), test_line, font=font)
-                w = bbox[2] - bbox[0]
-                if w <= max_width:
-                    current_line = test_line
-                else:
-                    if current_line:
-                        lines.append(current_line)
-                    # Too long word — split character by character
-                    if draw.textbbox((0, 0), word, font=font)[2] > max_width:
-                        sub_line = ""
-                        for ch in word:
-                            if draw.textbbox((0, 0), sub_line + ch, font=font)[2] <= max_width:
-                                sub_line += ch
-                            else:
-                                lines.append(sub_line)
-                                sub_line = ch
-                        if sub_line:
-                            current_line = sub_line
-                        else:
-                            current_line = ""
+            # --- Text wrapping function by words ---
+            def wrap_text(text, font, max_width, draw):
+                words = text.split()
+                lines = []
+                current_line = ""
+                for word in words:
+                    test_line = f"{current_line} {word}".strip()
+                    bbox = draw.textbbox((0, 0), test_line, font=font)
+                    w = bbox[2] - bbox[0]
+                    if w <= max_width:
+                        current_line = test_line
                     else:
-                        current_line = word
-            if current_line:
-                lines.append(current_line)
-            return lines if lines else [""]
+                        if current_line:
+                            lines.append(current_line)
+                        # Too long word — split character by character
+                        if draw.textbbox((0, 0), word, font=font)[2] > max_width:
+                            sub_line = ""
+                            for ch in word:
+                                if draw.textbbox((0, 0), sub_line + ch, font=font)[2] <= max_width:
+                                    sub_line += ch
+                                else:
+                                    lines.append(sub_line)
+                                    sub_line = ch
+                            if sub_line:
+                                current_line = sub_line
+                            else:
+                                current_line = ""
+                        else:
+                            current_line = word
+                if current_line:
+                    lines.append(current_line)
+                return lines if lines else [""]
 
-        # --- 1. Prepare X axis labels (top headers) ---
-        x_wrapped = []
-        x_label_height = 0
-        if x_texts_list:
-            cell_w = pil_images[0].width + gap if pil_images else grid_img.width // x_size
-            for xt in x_texts_list:
-                lines = wrap_text(xt, font, cell_w - 2 * x_text_padding, draw_temp)
-                x_wrapped.append(lines)
-                line_h = draw_temp.textbbox((0, 0), "Ay", font=font)[3] - draw_temp.textbbox((0, 0), "Ay", font=font)[1]
-                needed_h = len(lines) * (line_h + x_line_spacing) + x_text_padding
-                if needed_h > x_label_height:
-                    x_label_height = needed_h
+            # X labels
+            x_wrapped = []
+            x_label_height = 0
+            if x_texts:
+                for xt in x_texts:
+                    lines = wrap_text(xt, font, cell_w - 2 * x_text_padding, draw)
+                    x_wrapped.append(lines)
+                    line_h = draw.textbbox((0, 0), "Ay", font=font)[3] - draw.textbbox((0, 0), "Ay", font=font)[1]
+                    needed_h = len(lines) * (line_h + x_line_spacing) + x_text_padding
+                    if needed_h > x_label_height:
+                        x_label_height = needed_h
 
-        # --- 2. Prepare Y axis labels (left side headers) ---
-        y_wrapped = []          
-        if y_texts_list:
-            cell_h_total = pil_images[0].height + gap
-            line_h = draw_temp.textbbox((0, 0), "Ay", font=font)[3] - draw_temp.textbbox((0, 0), "Ay", font=font)[1]
-            max_lines = max(1, (cell_h_total - 2 * y_text_padding) // (line_h + y_line_spacing))
-
-            for yt in y_texts_list:
-                lines = wrap_text(yt, font, max_y_width - 2 * y_text_padding, draw_temp)
-                if len(lines) > max_lines:
-                    lines = lines[:max_lines]
-                    last_line = lines[-1] + '…'
-                    while draw_temp.textbbox((0, 0), last_line, font=font)[2] > max_y_width - 2 * y_text_padding and len(last_line) > 1:
-                        last_line = last_line[:-4] + '…'
-                    lines[-1] = last_line if last_line else '…'
-                y_wrapped.append(lines)
-        else:
+            # Y labels
             y_wrapped = []
+            if y_texts:
+                line_h = draw.textbbox((0, 0), "Ay", font=font)[3] - draw.textbbox((0, 0), "Ay", font=font)[1]
+                max_lines = max(1, (cell_h - 2 * y_text_padding) // (line_h + y_line_spacing))
+                for yt in y_texts:
+                    lines = wrap_text(yt, font, max_y_width - 2 * y_text_padding, draw)
+                    if len(lines) > max_lines:
+                        lines = lines[:max_lines]
+                        last_line = lines[-1] + '…'
+                        while draw.textbbox((0, 0), last_line, font=font)[2] > max_y_width - 2 * y_text_padding and len(last_line) > 1:
+                            last_line = last_line[:-4] + '…'
+                        lines[-1] = last_line if last_line else '…'
+                    y_wrapped.append(lines)
 
-        # --- 3. Z label (page header) ---
-        z_height = 0
-        if z_label:
-            try:
-                font_big = ImageFont.truetype("arial.ttf", int(f_size * 1.5))
-            except:
-                font_big = ImageFont.load_default()
-            z_height = int(f_size * 1.5) + 20
+            # Z label
+            z_height = 0
+            if z_label:
+                z_height = int(f_size * 1.5) + 20
 
-        # --- 4. Final canvas ---
-        final_w = max_y_width + grid_img.width
-        final_h = z_height + x_label_height + grid_img.height
-        final_img = Image.new("RGB", (final_w, final_h), color=(0, 0, 0))
-        draw_final = ImageDraw.Draw(final_img)
+            # Final canvas  with labels ---
+            final_w = max_y_width + grid_img.width
+            final_h = z_height + x_label_height + grid_img.height
+            final_img = Image.new("RGB", (final_w, final_h), color=(0, 0, 0))
+            final_draw = ImageDraw.Draw(final_img)
 
-        # --- 5. Draw Z label ---
-        if z_label:
-            bbox = draw_final.textbbox((0, 0), z_label, font=font_big)
-            zw = bbox[2] - bbox[0]
-            zh = bbox[3] - bbox[1]
-            draw_final.text(((final_w - zw) // 2, (z_height - zh) // 2), z_label, font=font_big, fill=(255, 255, 255))
+            # Draw Z label ---
+            if z_label:
+                bbox = final_draw.textbbox((0, 0), z_label, font=font_big)
+                zw = bbox[2] - bbox[0]
+                zh = bbox[3] - bbox[1]
+                final_draw.text(((final_w - zw) // 2, (z_height - zh) // 2), z_label, font=font_big, fill=(255, 255, 255))
 
-        # --- 6. Draw X axis labels ---
-        if x_texts_list:
-            x_start_x = max_y_width
-            img_w = pil_images[0].width
-            for idx, lines in enumerate(x_wrapped):
-                x_center = x_start_x + idx * (img_w + gap) + img_w // 2
-                y = z_height + x_text_padding
-                line_h = draw_final.textbbox((0, 0), "Ay", font=font)[3] - draw_final.textbbox((0, 0), "Ay", font=font)[1]
-                for line in lines:
-                    lw = draw_final.textbbox((0, 0), line, font=font)[2]
-                    draw_final.text((x_center - lw // 2, y), line, font=font, fill=(255, 255, 255))
-                    y += line_h + x_line_spacing
+            # Draw X axis labels ---
+            if x_texts:
+                x_start_x = max_y_width
+                for idx, lines in enumerate(x_wrapped):
+                    x_center = x_start_x + idx * (cell_w + gap) + cell_w // 2
+                    y = z_height + x_text_padding
+                    line_h = final_draw.textbbox((0, 0), "Ay", font=font)[3] - final_draw.textbbox((0, 0), "Ay", font=font)[1]
+                    for line in lines:
+                        lw = final_draw.textbbox((0, 0), line, font=font)[2]
+                        final_draw.text((x_center - lw // 2, y), line, font=font, fill=(255, 255, 255))
+                        y += line_h + x_line_spacing
 
-        # --- 7. Draw Y axis labels ---
-        if y_texts_list:
-            cell_h_total = pil_images[0].height + gap
-            y_start = z_height + x_label_height + gap // 2
-            for idx, lines in enumerate(y_wrapped):
-                y_center = y_start + idx * cell_h_total + cell_h_total // 2
-                line_h = draw_final.textbbox((0, 0), "Ay", font=font)[3] - draw_final.textbbox((0, 0), "Ay", font=font)[1]
-                total_text_h = len(lines) * (line_h + y_line_spacing) - y_line_spacing
-                current_y = y_center - total_text_h // 2
-                for line in lines:
-                    lw = draw_final.textbbox((0, 0), line, font=font)[2]
-                    x = (max_y_width - lw) // 2
-                    draw_final.text((x, current_y), line, font=font, fill=(255, 255, 255))
-                    current_y += line_h + y_line_spacing
+            # Draw Y axis labels ---
+            if y_texts:
+                y_start = z_height + x_label_height + gap // 2
+                for idx, lines in enumerate(y_wrapped):
+                    y_center = y_start + idx * (cell_h + gap) + cell_h // 2
+                    line_h = final_draw.textbbox((0, 0), "Ay", font=font)[3] - final_draw.textbbox((0, 0), "Ay", font=font)[1]
+                    total_text_h = len(lines) * (line_h + y_line_spacing) - y_line_spacing
+                    current_y = y_center - total_text_h // 2
+                    for line in lines:
+                        lw = final_draw.textbbox((0, 0), line, font=font)[2]
+                        x = (max_y_width - lw) // 2
+                        final_draw.text((x, current_y), line, font=font, fill=(255, 255, 255))
+                        current_y += line_h + y_line_spacing
 
-        # --- 8. Paste image grid ---
-        final_img.paste(grid_img, (max_y_width, z_height + x_label_height))
+            # Paste image grid ---
+            final_img.paste(grid_img, (max_y_width, z_height + x_label_height))
+            # Replace grid_img ---
+            return final_img
 
-        # --- 9. Replace grid_img ---
-        grid_img = final_img
+        # --- 5. Creating a full-size page with labels ---
+        # Parsing lists of signatures
+        x_texts_list = x_txt.split(";") if x_txt else []
+        y_texts_list = y_txt.split(";") if y_txt else []
+        y_count = len(y_texts_list) if y_texts_list else 1
+        x_count = len(x_texts_list) if x_texts_list else 1
+        cell_w_full = pil_images[0].width
+        cell_h_full = pil_images[0].height
 
-        # 6. Convert back to ComfyUI tensor format
-        final_np = np.array(grid_img).astype(np.float32) / 255.0
-        final_tensor = torch.from_numpy(final_np).unsqueeze(0)  # [1, H, W, C]
+        full_page_img = add_labels_to_grid(
+            base_grid, x_texts_list, y_texts_list, z_label,
+            font, font_big, gap,
+            cell_w_full, cell_h_full, y_count, x_count,
+            max_y_width=400
+        )
 
-        # 7. Preview (if enabled)
+        # --- 6. Resize the entire page if needed (for preview) ---
+        full_w, full_h = full_page_img.size
+        full_pixels = full_w * full_h
+        max_pixels = max_preview_mp * 1_000_000
+
+        # Calculate the scale taking into account pixel and side restrictions
+        scale = 1.0
+        if full_pixels > max_pixels:
+            scale = min(scale, (max_pixels / full_pixels) ** 0.5)
+        if full_w > max_preview_side:
+            scale = min(scale, max_preview_side / full_w)
+        if full_h > max_preview_side:
+            scale = min(scale, max_preview_side / full_h)
+
+        if scale < 1.0:
+            new_w = int(full_w * scale)
+            new_h = int(full_h * scale)
+            resized_page_img = full_page_img.resize((new_w, new_h), Image.LANCZOS)
+        else:
+            resized_page_img = full_page_img
+
+        # --- 7. Conversion to tensors ---
+        def pil_to_tensor(pil_img):
+            np_arr = np.array(pil_img).astype(np.float32) / 255.0
+            return torch.from_numpy(np_arr).unsqueeze(0)  # [1, H, W, C]
+
+        full_tensor = pil_to_tensor(full_page_img)
+        preview_tensor = pil_to_tensor(resized_page_img)
+
+        # --- 8. UI preview (individual cells) ---
         ui_res = []
         if show_previews:
-            # Display individual images of the current page (not the final grid)
             ui_res = self.preview_images([page_imgs[i] for i in range(count)])
 
-        return {"result": (final_tensor,), "ui": {"images": ui_res}}
-
+        return {"result": (full_tensor, preview_tensor), "ui": {"images": ui_res}}   
+        
 # --- 3. SUPER STACKER (final batch) ---
 class MyXYZSuperStacker:
     storage = []
@@ -365,32 +402,42 @@ class MyXYZSuperStacker:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "image": ("IMAGE",),
+                "full_page": ("IMAGE",),
+                "resized_page": ("IMAGE",),
                 "XYZ_GRID_CONTROL": ("XYZ_GRID_CONTROL",),
             }
         }
 
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("images",)
+    RETURN_TYPES = ("IMAGE", "IMAGE")
+    RETURN_NAMES = ("full_stack", "resized_stack")
     FUNCTION = "stack"
     CATEGORY = "Utils"
     DESCRIPTION = "Collects all rendered XY pages into a single multi-page image sequence once the full XYZ dataset is generated. Acts as the final aggregation node to output the complete result set for saving or further processing."
 
-    def stack(self, image, XYZ_GRID_CONTROL):
+    def stack(self, full_page, resized_page, XYZ_GRID_CONTROL):
         *_, z_idx, total_z, g_index = XYZ_GRID_CONTROL
-        
+        # Reset on first call (g_index == 0)
         if g_index == 0:
-            MyXYZSuperStacker.storage = []
+            self.storage_full = []
+            self.storage_preview = []
 
-        if len(MyXYZSuperStacker.storage) == z_idx:
-            MyXYZSuperStacker.storage.append(image)
+        # In case the attributes were not created for some reason (for example, g_index is not 0 the first time it is called)
+        if not hasattr(self, 'storage_full'):
+            self.storage_full = []
+            self.storage_preview = []
 
-        if len(MyXYZSuperStacker.storage) >= total_z:
-            all_pages = torch.cat(MyXYZSuperStacker.storage, dim=0)
-            MyXYZSuperStacker.storage = [] 
-            return (all_pages,)
+        if len(self.storage_full) == z_idx:
+            self.storage_full.append(full_page)
+            self.storage_preview.append(resized_page)
+
+        if len(self.storage_full) >= total_z:
+            full_stack = torch.cat(self.storage_full, dim=0)
+            resized_stack = torch.cat(self.storage_preview, dim=0)
+            self.storage_full = []
+            self.storage_preview = []
+            return (full_stack, resized_stack)
         else:
-            return (ExecutionBlocker(None),)
+            return (ExecutionBlocker(None), ExecutionBlocker(None))
      
 class XYZConflictValidatorAndSwitch:
     @classmethod

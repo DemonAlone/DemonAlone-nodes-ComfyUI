@@ -33,7 +33,7 @@ class ImageResizeNode:
                 "method": (["stretch", "keep proportion", "fill / crop", "pad"],),
                 "interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos"],),
                 "condition": (["always", "downscale if bigger", "upscale if smaller", "if bigger area", "if smaller area"],),
-                "multiple_of": ("INT", {"default": 1, "min": 1, "max": 512, "description": "1 = disable, otherwise round down to multiple"})
+                "multiple_of": ("INT", {"default": 1, "min": 1, "max": 512, "tooltip": "1 = disable, otherwise round down to multiple"})
             }
         }
     

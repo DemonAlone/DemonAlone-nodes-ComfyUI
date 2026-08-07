@@ -9,7 +9,6 @@ from PIL.ExifTags import TAGS, GPSTAGS, IFD
 from PIL.PngImagePlugin import PngImageFile
 import os
 import folder_paths
-import time
 
 def images_grid_by_x(
     images: list,

@@ -9,7 +9,6 @@ from PIL.ExifTags import TAGS, GPSTAGS, IFD
 from PIL.PngImagePlugin import PngImageFile
 import os
 import folder_paths
-import time
 
 def images_grid_by_x(
     images: list,
@@ -162,7 +161,7 @@ class MyXYGridAccumulator(FeedbackNode):
                 "XYZ_GRID_CONTROL": ("XYZ_GRID_CONTROL",),
                 "show_previews": ("BOOLEAN", {"default": True}),
                 "max_preview_mp": ("FLOAT", {"default": 15.0, "min": 4.0, "max": 18.0, "step": 0.1, "tooltip": "Megapixel limit for resized preview. If total pixels exceed this, the page is scaled down"}),
-                "max_preview_side": ("INT", {"default": 8192, "min": 2048, "max": 16384, "step": 128, "tooltip": "Maximum width/height in pixels for resized preview. If either side exceeds this, the page is scaled down."}),
+                "max_preview_side": ("INT", {"default": 12288, "min": 2048, "max": 16384, "step": 128, "tooltip": "Maximum width/height in pixels for resized preview. If either side exceeds this, the page is scaled down."}),
             },
             "hidden": {"unique_id": "UNIQUE_ID"}
         }

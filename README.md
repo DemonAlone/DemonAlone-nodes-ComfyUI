@@ -9,6 +9,6 @@ This repository bundles a set of lightweight utility nodes for *ComfyUI* that we
 
 *LoadImageWithMetadataNode* is based on *CImageLoadWithMetadata* from [ComfyUI-Crystools](https://github.com/crystian/ComfyUI-Crystools)
 
-*feedbackNode*,*MyXYZHelper*, *MyXYGridAccumulator*,  *MyXYZSuperStacker* nodes based on nodes from  [qq-nodes-comfyui](https://github.com/kenjiqq/qq-nodes-comfyui)
+*feedbackNode*, *MyXYZHelper*, *MyXYGridAccumulator*, *MyXYZSuperStacker* nodes based on nodes from  [qq-nodes-comfyui](https://github.com/kenjiqq/qq-nodes-comfyui)
 
 Created with the assistance of *Google Gemini*/*Gemma*, *Qwen*, *GPT-OSS*, *DeepSeek*.

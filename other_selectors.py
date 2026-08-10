@@ -22,37 +22,6 @@ class BooleanSwitchNode:
         else:
             return (on_false if on_false is not None else None,)
 
-class ClipSkipSliderNode:
-    """
-    Emits an integer in the range [-24 … -1].
-    The slider is bounded by its min/max attributes – the user cannot
-    select a value outside this interval.
-    """
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                # 1. Input name → type INT
-                # 2. Property dictionary → default, min, max
-                "value": ("INT", {"default": -1, "min": -24, "max": -1})
-            }
-        }
-
-    RETURN_TYPES = ("INT",)
-    RETURN_NAMES = ("value",)        # optional – gives the output a name
-    FUNCTION = "get_value"           # method that will be invoked
-    CATEGORY = "utils"
-    DESCRIPTION = "Outputs an integer clip skip value ranging from -24 to -1. Provides fine-grained control over the depth of CLIP token skipping in diffusion models."
-
-    def get_value(self, value):
-        """
-        Receives the slider's current integer value and returns it.
-        The return is wrapped in a tuple because the node interface expects
-        an iterable of outputs.
-        """
-        return (value,)
-
 class FloatSelectorNode:
 
     @classmethod

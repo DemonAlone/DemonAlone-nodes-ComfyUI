@@ -217,23 +217,23 @@ class ClipSkipSliderNode:
             "required": {
                 # 1. Input name → type INT
                 # 2. Property dictionary → default, min, max
-                "value": ("INT", {"default": -1, "min": -24, "max": -1})
+                "clip_skip": ("INT", {"default": -1, "min": -24, "max": -1})
             }
         }
 
     RETURN_TYPES = ("INT",)
-    RETURN_NAMES = ("value",)        # optional – gives the output a name
+    RETURN_NAMES = ("clip_skip",)
     FUNCTION = "get_value"           # method that will be invoked
     CATEGORY = "utils"
     DESCRIPTION = "Outputs an integer clip skip value ranging from -24 to -1. Provides fine-grained control over the depth of CLIP token skipping in diffusion models."
 
-    def get_value(self, value):
+    def get_value(self, clip_skip):
         """
         Receives the slider's current integer value and returns it.
         The return is wrapped in a tuple because the node interface expects
         an iterable of outputs.
         """
-        return (value,)
+        return (clip_skip,)
 
 class WanNumFramesNode:
     RETURN_TYPES = ("INT",)

@@ -14,6 +14,7 @@ from PIL.JpegImagePlugin import JpegImageFile
 from PIL.PngImagePlugin import PngImageFile
 from PIL.ExifTags import TAGS
 import piexif
+import re
 
 import folder_paths
 
@@ -398,6 +399,7 @@ class SaveImageNoMetaNode:
     Supports png and jpg formats.
     Always saves the file inside the `output/<relative path>` folder.
     An index is added automatically (00001, 00002 ...).
+    Now supports image batches: each frame is saved with a unique index.
     """
     @classmethod
     def INPUT_TYPES(cls):
@@ -418,15 +420,14 @@ class SaveImageNoMetaNode:
     OUTPUT_NODE = True
     DESCRIPTION = "Saves images to the output folder without embedding workflow metadata. Supports PNG/JPEG formats, automatic date stamping (%date%) with custom format support, and auto-indexing (e.g., 00001.png) for duplicate files."
 
-    def _ensure_rgb_uint8(self, img):
+    def _process_single_image(self, img):
+        """Convert a single image (H,W,C) to uint8 RGB."""
         if isinstance(img, torch.Tensor):
             img = img.cpu().numpy()
-        
-        # If a batch is received (N, H, W, C), take the first frame
-        if img.ndim == 4:
-            img = img[0]
+
+        # img should be 3D now
         while img.ndim > 3:
-            img = img[0]
+            img = img[0]  # fallback, just in case
             
         # Ensure 3 channels (RGB) - important for JPG which doesn't support Alpha
         if img.ndim == 2:                # H,W → RGB
@@ -456,6 +457,29 @@ class SaveImageNoMetaNode:
                 return candidate
             counter += 1
 
+    def _get_next_index(self, base_path: Path) -> int:
+        """
+        Returns the next available index for files with pattern:
+        base_stem_#####.ext (where base_stem is base_path.stem without any trailing numbers).
+        """
+        parent = base_path.parent
+        stem = base_path.stem
+        ext = base_path.suffix
+        # Find all existing files matching the pattern
+        pattern = f"{stem}_[0-9][0-9][0-9][0-9][0-9]{ext}"
+        existing = list(parent.glob(pattern))
+        max_idx = 0
+        for f in existing:
+            # Extract the numeric part after the last '_' and before the extension
+            name = f.stem
+            if name.startswith(stem + "_"):
+                suffix = name[len(stem)+1:]  # everything after stem + "_"
+                if suffix.isdigit():
+                    idx = int(suffix)
+                    if idx > max_idx:
+                        max_idx = idx
+        return max_idx + 1
+
     def save(self, image, path: str, format: str, preview: bool, date_mask: bool, custom_date_format: str):
         if not path:
             raise ValueError("Save path is not specified")
@@ -476,10 +500,10 @@ class SaveImageNoMetaNode:
         # Replace %date% with the calculated string
         processed_path = path.replace("%date%", date_str)
         
-        # 1. Define the root of the output folder
+        # Define the root of the output folder
         output_base = Path(os.getcwd()) / "output"
         
-        # 2. Formulate the target file path inside 'output'
+        # Formulate the target file path inside 'output'
         clean_relative_path = processed_path.lstrip("/\\").lstrip("./")
         target_file_path = output_base / clean_relative_path
         
@@ -489,46 +513,89 @@ class SaveImageNoMetaNode:
         elif target_file_path.suffix == "":
             target_file_path = target_file_path.with_suffix(f".{format}")
 
-        # 3. Generate a unique name (with index)
-        unique_path = self._unique_name(target_file_path)
-            
-        # 4. Save the image
-        img_np = self._ensure_rgb_uint8(image)
-        pil_img = Image.fromarray(img_np)
-        
-        # Remove all metadata (workflow, etc.)
-        pil_img.info.clear()  
-        
-        unique_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Save with format specific settings
-        if format.lower() in ["jpg", "jpeg"]:
-            pil_img.save(str(unique_path), format="JPEG", quality=95)
-        else:
-            pil_img.save(str(unique_path), format="PNG")
-        
-        # 5. Formulate the response for UI (preview)
-        if preview:
-            try:
-                subfolder = str(unique_path.parent.relative_to(output_base))
-            except ValueError:
-                subfolder = ""
-                
-            if subfolder in [".", ""]:
-                subfolder = ""
+        # Determine batch size
+        if isinstance(image, torch.Tensor):
+            if image.ndim == 4:
+                batch_size = image.shape[0]
             else:
-                subfolder = subfolder.replace(os.sep, '/')
-                
-            return {
-                "ui": {
-                    "images": [
-                        {
-                            "filename": unique_path.name,
-                            "subfolder": subfolder,
-                            "type": "output"
-                        }
-                    ]
-                }
-            }
-        return {}
+                batch_size = 1
+        else:
+            # fallback
+            batch_size = 1
 
+        # Prepare list for UI previews
+        ui_images = []
+
+        if batch_size == 1:
+            # Single image – use old logic
+            unique_path = self._unique_name(target_file_path)
+            img_np = self._process_single_image(image)
+            pil_img = Image.fromarray(img_np)
+            pil_img.info.clear()
+            unique_path.parent.mkdir(parents=True, exist_ok=True)
+            if format.lower() in ["jpg", "jpeg"]:
+                pil_img.save(str(unique_path), format="JPEG", quality=95)
+            else:
+                pil_img.save(str(unique_path), format="PNG")
+
+            if preview:
+                try:
+                    subfolder = str(unique_path.parent.relative_to(output_base))
+                except ValueError:
+                    subfolder = ""
+                if subfolder in [".", ""]:
+                    subfolder = ""
+                else:
+                    subfolder = subfolder.replace(os.sep, '/')
+                ui_images.append({
+                    "filename": unique_path.name,
+                    "subfolder": subfolder,
+                    "type": "output"
+                })
+        else:
+            # Batch: save each frame with a sequential index, avoiding collisions
+            base_stem = target_file_path.stem
+            ext = target_file_path.suffix
+            # Determine the next free index for this base name
+            next_idx = self._get_next_index(target_file_path)
+            for i in range(batch_size):
+                # Build filename with index
+                idx_str = f"_{next_idx + i:05d}"
+                unique_name = f"{base_stem}{idx_str}{ext}"
+                unique_path = target_file_path.parent / unique_name
+                # Ensure we don't overwrite (should be safe, but just in case)
+                if unique_path.exists():
+                    # If it exists (unlikely due to _get_next_index), fallback to _unique_name for this single file
+                    unique_path = self._unique_name(unique_path)
+                # Process the i-th image
+                if isinstance(image, torch.Tensor):
+                    img_tensor = image[i] if image.ndim == 4 else image
+                else:
+                    img_tensor = image  # fallback
+                img_np = self._process_single_image(img_tensor)
+                pil_img = Image.fromarray(img_np)
+                pil_img.info.clear()
+                unique_path.parent.mkdir(parents=True, exist_ok=True)
+                if format.lower() in ["jpg", "jpeg"]:
+                    pil_img.save(str(unique_path), format="JPEG", quality=95)
+                else:
+                    pil_img.save(str(unique_path), format="PNG")
+
+                if preview:
+                    try:
+                        subfolder = str(unique_path.parent.relative_to(output_base))
+                    except ValueError:
+                        subfolder = ""
+                    if subfolder in [".", ""]:
+                        subfolder = ""
+                    else:
+                        subfolder = subfolder.replace(os.sep, '/')
+                    ui_images.append({
+                        "filename": unique_path.name,
+                        "subfolder": subfolder,
+                        "type": "output"
+                    })
+
+        if preview and ui_images:
+            return {"ui": {"images": ui_images}}
+        return {}

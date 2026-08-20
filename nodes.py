@@ -120,9 +120,13 @@ class DA_LatentLoader:
         return {"required": {"latent_file": (sorted(files),)}}
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "load_latent"
-    DESCRIPTION = "Loads previously saved latent tensors (.latent or .safetensors) from the current output directory. Automatically detects and parses both modern JSON-wrapped formats (supporting float32 tensors) and legacy binary formats (pickle/torch/safetensors). Ensures 4D tensor shape compatibility by broadcasting missing dimensions. Logs loaded tensor statistics (shape, min/max/mean) for debugging."
     CATEGORY = "latent"
-    
+    DESCRIPTION = (
+        "Loads previously saved latent tensors (.latent or .safetensors) from the current output directory."
+        "Automatically detects and parses both modern JSON-wrapped formats (supporting float32 tensors) and legacy binary formats (pickle/torch/safetensors)."
+        "Ensures 4D tensor shape compatibility by broadcasting missing dimensions. Logs loaded tensor statistics (shape, min/max/mean) for debugging."
+    )
+
     def load_latent(self, latent_file):
         if latent_file == "[No latents found in output]":
             raise FileNotFoundError("No .latent/.safetensors files found in output")
@@ -205,137 +209,6 @@ class DA_LatentLoader:
         elif t.ndim == 2:
             t = t.unsqueeze(0).unsqueeze(0)
         return t.to(torch.float32)
-        
-class PatchModelSelectorNode:
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "patch_name": (folder_paths.get_filename_list("model_patches"),),
-            }
-        }
-
-    RETURN_TYPES = (folder_paths.get_filename_list("model_patches"), "STRING")
-    RETURN_NAMES = ("patch_name", "patch_name_str")
-    CATEGORY = "utils"
-    DESCRIPTION = "Retrieves patch model names from the ComfyUI patches folder and outputs both filename tuple (combo) and string representation for dynamic patch selection."
-    FUNCTION = "get_patch_name"
-
-    def get_patch_name(self, patch_name):
-        return patch_name, patch_name
-
-class MultiPlaceholderPromptList:
-    """
-    Generates a list of prompts, replacing multiple placeholders in a template with all possible combinations of values from corresponding lists.
-    Placeholders in the template should be specified in the form {name}.
-    """
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "Template": ("STRING", {
-                    "multiline": True,
-                    "default": "a girl in a {color} dress with {hair} hair",  
-                    "tooltip": "Main prompt template. Use placeholders like {name}. Additional placeholders can be added below; all are equivalent and optional."
-                }),
-                "values_separator": ("STRING", {
-                    "default": ",",
-                    "tooltip": "Separator used for listing values (supports \\n). Use \\n for multi-line lists."
-                }),
-                "placeholder1": ("STRING", {
-                    "default": "{color}",
-                    "tooltip": "First placeholder to replace. Optional and equivalent to other placeholders."
-                }),
-                "values1": ("STRING", {
-                    "multiline": True,
-                    "default": "blue, red, black",
-                    "tooltip": "Comma-separated list of values for the first placeholder. Use '_empty_' as a value to insert an empty string."
-                }),
-                "placeholder2": ("STRING", {
-                    "default": "{hair}",
-                    "tooltip": "Second placeholder to replace. Optional and equivalent to others."
-                }),
-                "values2": ("STRING", {
-                    "multiline": True,
-                    "default": "blonde, brown, black",
-                    "tooltip": "Comma-separated list of values for the second placeholder. Use '_empty_' as a value to insert an empty string."
-                }),
-                "placeholder3": ("STRING", {
-                    "default": "",
-                    "tooltip": "Third placeholder (optional)."
-                }),
-                "values3": ("STRING", {
-                    "multiline": True,
-                    "default": "",
-                    "tooltip": "Values for the third placeholder. Use '_empty_' as a value to insert an empty string in the final prompt."
-                }),
-            }
-        }
-
-    RETURN_TYPES = ("LIST",)
-    FUNCTION = "generate"
-    CATEGORY = "utility/text"
-    DESCRIPTION = "Creates a list of prompts, substituting all possible combinations of values from specified lists into placeholders in the template."
-
-    def generate(self, Template, values_separator, placeholder1, values1, placeholder2, values2, placeholder3, values3):
-        # Separator processing (supports \n)
-        sep = "\n" if values_separator == r"\n" else values_separator
-
-        # Collect pairs (placeholder, value list), ignoring empty ones
-        pairs = []
-        for ph, vals in [(placeholder1, values1), (placeholder2, values2), (placeholder3, values3)]:
-            if ph.strip() and vals.strip():
-                # Splitting the string into elements, trimming edge whitespace, and removing empty items caused by accidental line breaks
-
-                raw_list = [v.strip() for v in vals.split(sep) if v.strip()]
-                
-                value_list = []
-                for v in raw_list:
-                    if v == "_empty_":
-                        value_list.append("")  # Convert marker to a valid empty string
-                    else:
-                        value_list.append(v)
-                            
-                    if value_list:   
-                            pairs.append((ph.strip(), value_list))
-
-        # If no pairs at all — return cleaned original template
-        if not pairs:
-            return ([Template.strip()],)
-
-        # Find all placeholders in template (searching for {something})
-        found = re.findall(r'\{[^}]+\}', Template)
-        unique_in_template = []
-        for ph in found:
-            if ph not in unique_in_template:
-                unique_in_template.append(ph)
-
-        # Dictionary: placeholder → value list
-        ph_to_values = dict(pairs)
-
-        # Take only those placeholders that are in the template and have values defined
-        vary_pairs = [(ph, ph_to_values[ph]) for ph in unique_in_template if ph in ph_to_values]
-
-        # If none exist — return cleaned template
-        if not vary_pairs:
-            return ([Template.strip()],)
-
-        # Generate Cartesian product
-        value_lists = [values for _, values in vary_pairs]
-        combinations = list(itertools.product(*value_lists))
-
-        # Collect results
-        results = []
-        for combo in combinations:
-            prompt = Template
-            for (ph, _), val in zip(vary_pairs, combo):
-                prompt = prompt.replace(ph, val)
-            
-        # Remove unnecessary double spaces left where the placeholder was replaced, and trim the string ends from accidental newlines
-            cleaned_prompt = " ".join(prompt.split())
-            results.append(cleaned_prompt.strip())
-
-        return (results,)
 
 class ConditionalVAEDecodePreview:
     @classmethod
@@ -352,8 +225,11 @@ class ConditionalVAEDecodePreview:
     RETURN_NAMES = ("LATENT", "IMAGE")
     FUNCTION = "process"
     CATEGORY = "custom_nodes"
-    DESCRIPTION = "Decodes latents to images using the provided VAE when enabled, outputting both Latent and Image for previewing. When disabled, acts as a pass-through (Reroute) node, passing the original Latent unchanged without decoding."
     OUTPUT_NODE = True
+    DESCRIPTION = (
+        "Decodes latents to images using the provided VAE when enabled, outputting both Latent and Image for previewing."
+        "When disabled, acts as a pass-through (Reroute) node, passing the original Latent unchanged without decoding."
+    )
 
     def process(self, samples, vae, preview):
         if not preview:

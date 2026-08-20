@@ -3,10 +3,7 @@ from .nodes import (
     DA_BusInNode,
     DA_BusOutNode,
     DA_LatentLoader,
-    MultiPlaceholderPromptList,
     OptionalCondMergeNode,
-    PatchModelSelectorNode,
-    
 )
 
 from .adapters import (
@@ -37,6 +34,7 @@ from .other_list_tools import (
     ListCreaterNode,
     ListRerouteNode,
     ListCombinerNode,
+    MultiPlaceholderPromptList,
 )
 
 from .ksamplers import (
@@ -50,9 +48,11 @@ from .other_selectors import (
     BooleanSwitchNode,
     ClipSkipSliderNode,
     FloatSelectorNode,
+    PatchModelSelectorNode,
     PonyPrefixesNode,
     ShiftSliderNode,
     WanNumFramesNode,
+
 )
 
 from .xyz_plot import (

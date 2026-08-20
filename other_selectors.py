@@ -1,3 +1,5 @@
+import folder_paths
+
 class BooleanSwitchNode:
     @classmethod
     def INPUT_TYPES(cls):
@@ -35,11 +37,11 @@ class FloatSelectorNode:
             }
         }
 
-    RETURN_TYPES = ("FLOAT",)        
-    RETURN_NAMES = ("float",)        
+    RETURN_TYPES = ("FLOAT",)    
+    RETURN_NAMES = ("float",)
+    FUNCTION = "run"
+    CATEGORY = "utils"
     DESCRIPTION = "A simple utility node that outputs a single float value with adjustable range and precision. Useful for creating custom selectors like CFG strength."
-    FUNCTION = "run"               
-    CATEGORY = "utils"      
 
     def run(self, float):
        
@@ -207,9 +209,10 @@ class ClipSkipSliderNode:
 class WanNumFramesNode:
     RETURN_TYPES = ("INT",)
     RETURN_NAMES = ("num_frames",)
-    DESCRIPTION  = "Output integer value with strict range constraints (min: 1, max: 10000, step: 4). " 
-    FUNCTION     = "execute"
-    CATEGORY     = "utils"
+    FUNCTION = "execute"
+    CATEGORY = "utils"
+    DESCRIPTION = "Output integer value with strict range constraints (min: 1, max: 10000, step: 4)." 
+
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -232,3 +235,21 @@ class WanNumFramesNode:
             return (self.default_value,)
 
         return (num_frames,)
+
+class PatchModelSelectorNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "patch_name": (folder_paths.get_filename_list("model_patches"),),
+            }
+        }
+
+    RETURN_TYPES = (folder_paths.get_filename_list("model_patches"), "STRING")
+    RETURN_NAMES = ("patch_name", "patch_name_str")
+    CATEGORY = "utils"
+    FUNCTION = "get_patch_name"
+    DESCRIPTION = "Retrieves patch model names from the ComfyUI patches folder and outputs both filename tuple (combo) and string representation for dynamic patch selection."
+
+    def get_patch_name(self, patch_name):
+        return patch_name, patch_name

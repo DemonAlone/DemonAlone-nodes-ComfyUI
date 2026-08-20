@@ -73,7 +73,11 @@ class DA_Enhanced_KSampler:
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "sample"
     CATEGORY = "Sampling"
-    DESCRIPTION = "An advanced KSampler supporting Model Shift (SDE), dynamic noise masking, and customizable preview frequency. Allows users to control how often latent previews are rendered during the sampling process to optimize memory usage and visual feedback."
+    DESCRIPTION = (
+        "An advanced KSampler supporting Model Shift (SDE), dynamic noise masking, and customizable preview frequency."
+        "Allows users to control how often latent previews are rendered during the sampling process to optimize memory usage and visual feedback."
+    )
+
     # ----------Helper method----------
     def _apply_shift(self, model: "MODEL", shift: float, multiplier: float = 1.0):
         m = model.clone()
@@ -198,8 +202,11 @@ class DA_TiledUpscaler:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "upscale_process"
-    DESCRIPTION = "Tiled diffusion upscaling with optional ESRGAN pre-scaling. Memory-efficient processing of large images in tiles, featuring seamless overlap blending, configurable denoise strength, and preview callbacks for detail enhancement without VRAM exhaustion."
     CATEGORY = "Image Processing/Upscale"
+    DESCRIPTION = (
+        "Tiled diffusion upscaling with optional ESRGAN pre-scaling."
+        "Memory-efficient processing of large images in tiles, featuring seamless overlap blending, configurable denoise strength, and preview callbacks for detail enhancement without VRAM exhaustion."
+    )
     
     def upscale_full_image(self, image, target_size, upscale_model_opt):
         new_H, new_W = target_size

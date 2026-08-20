@@ -6,7 +6,11 @@ class AnyAdapterNode:
     RETURN_TYPES = ("*",)
     FUNCTION = "adapt"
     CATEGORY = "utils"
-    DESCRIPTION = "A flexible pass-through node that accepts any input type. It safely forwards data downstream or returns a clean None output if the input is unconnected, ensuring pipeline stability without breaking custom workflows."
+    DESCRIPTION = (
+        "A flexible pass-through node that accepts any input type." 
+        "It safely forwards data downstream or returns a clean None output if the input is unconnected, ensuring pipeline stability without breaking custom workflows."
+    )    
+        
     def adapt(self, input_any=None):
         """
         If the input is not connected, `input_any` will be None.
@@ -26,7 +30,10 @@ class AnytoIntegerAdapterNode:
     RETURN_TYPES = ("INT",)
     FUNCTION = "adapt"
     CATEGORY = "utils"
-    DESCRIPTION = "Safely converts any compatible input value into an integer. If the conversion fails or is impossible, it returns None without crashing the workflow."
+    DESCRIPTION = (
+        "Safely converts any compatible input value into an integer."
+        "If the conversion fails or is impossible, it returns None without crashing the workflow."
+    )
     
     def adapt(self, input_any):
         """
@@ -46,7 +53,10 @@ class AnytoFloatAdapterNode:
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "adapt"
     CATEGORY = "utils"
-    DESCRIPTION = "Safely converts any compatible input value into a floating-point number. If the conversion fails or is impossible, it returns None to prevent workflow errors."
+    DESCRIPTION = (
+        "Safely converts any compatible input value into a floating-point number." 
+        "If the conversion fails or is impossible, it returns None to prevent workflow errors."
+    )
 
     def adapt(self, input_any):
         """
@@ -59,7 +69,6 @@ class AnytoFloatAdapterNode:
             return (None,)
 
 class AnyConcatNode:
-    
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -73,7 +82,10 @@ class AnyConcatNode:
     RETURN_TYPES = ("STRING",)
     FUNCTION = "concat"
     CATEGORY = "utils"
-    DESCRIPTION = "Concatenates any number of up to 5 text inputs into a single string using a custom delimiter. Acts as a flexible joiner that automatically ignores unconnected slots, ideal for building dynamic text prompts or combining parameters from various sources."
+    DESCRIPTION = (
+        "Concatenates any number of up to 5 text inputs into a single string using a custom delimiter." 
+        "Acts as a flexible joiner that automatically ignores unconnected slots, ideal for building dynamic text prompts or combining parameters from various sources."
+    )
 
     def concat(self, delimiter: str, **kwargs):
         """
@@ -116,8 +128,11 @@ class StringToFloatNode:
     RETURN_TYPES = ("FLOAT",)          # output – float
     FUNCTION = "convert"
     CATEGORY = "utils"
-    DESCRIPTION = "Converts a text input string into a floating-point number with error handling. If the string cannot be parsed as a valid float, it logs the issue and returns 0.0 to keep the pipeline running smoothly."
-
+    DESCRIPTION = (
+        "Converts a text input string into a floating-point number with error handling."
+        "If the string cannot be parsed as a valid float, it logs the issue and returns 0.0 to keep the pipeline running smoothly."
+    )
+    
     def convert(self, text_value):
         try:
             return (float(text_value),)
@@ -138,7 +153,10 @@ class StringToIntNode:
     RETURN_TYPES = ("INT",)            # output – integer
     FUNCTION = "convert"
     CATEGORY = "utils"
-    DESCRIPTION = "Safely converts a text input string into an integer. Automatically handles parsing errors by logging them and returning 0 as a fallback, ensuring the workflow continues without crashing on invalid numeric strings."
+    DESCRIPTION = (
+        "Safely converts a text input string into an integer."
+        "Automatically handles parsing errors by logging them and returning 0 as a fallback, ensuring the workflow continues without crashing on invalid numeric strings."
+    )
     
     def convert(self, text_value):
         try:
@@ -148,8 +166,8 @@ class StringToIntNode:
             print(f"[StringToIntNode] Conversion error for '{text_value}': {e}")
             return (0,)
 
+# modified node TextConcat from https://github.com/bash-j/mikey_nodes
 class TextConcatNode:
-    # modified node TextConcat from https://github.com/bash-j/mikey_nodes
     @classmethod
     def INPUT_TYPES(cls):
         return {

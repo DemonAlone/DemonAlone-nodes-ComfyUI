@@ -47,6 +47,7 @@ from .ksamplers import (
 from .other_selectors import (
     BooleanSwitchNode,
     ClipSkipSliderNode,
+    ControlNetModelSelectorNode,
     FloatSelectorNode,
     PatchModelSelectorNode,
     PonyPrefixesNode,
@@ -88,6 +89,7 @@ NODE_CLASS_MAPPINGS = {
     "ClipSkipSliderNode": ClipSkipSliderNode,
     "ConditionalVAEDecodePreview": ConditionalVAEDecodePreview,
     "CountListNode": CountListNode,
+    "ControlNetModelSelectorNode": ControlNetModelSelectorNode,
     "DA_AudioDebugNode": DA_AudioDebugNode,
     "DA_Base_KSampler": DA_Base_KSampler,
     "DA_BusInNode": DA_BusInNode,
@@ -143,6 +145,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ClipSkipSliderNode": "Clip Skip Slider",
     "ConditionalVAEDecodePreview": "Conditional VAE Decode Preview",
     "CountListNode": "Count List",
+    "ControlNetModelSelectorNode": "ControlNet Model Selector",
     "DA_AudioDebugNode": "DA_AudioDebug",
     "DA_Base_KSampler": "DA_Base_KSampler",
     "DA_BusInNode": "BusIn",

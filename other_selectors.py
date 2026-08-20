@@ -253,3 +253,21 @@ class PatchModelSelectorNode:
 
     def get_patch_name(self, patch_name):
         return patch_name, patch_name
+
+class ControlNetModelSelectorNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "control_net_name": (folder_paths.get_filename_list("controlnet"),),
+            }
+        }
+
+    RETURN_TYPES = (folder_paths.get_filename_list("controlnet"), "STRING")
+    RETURN_NAMES = ("control_net_name", "control_net_name_str")
+    CATEGORY = "utils"
+    FUNCTION = "get_control_net_name"
+    DESCRIPTION = "Retrieves ControNete model names from the ComfyUI controlnet folder and outputs both filename tuple (combo) and string representation for dynamic controlnet selection."
+
+    def get_control_net_name(self, control_net_name):
+        return control_net_name, control_net_name

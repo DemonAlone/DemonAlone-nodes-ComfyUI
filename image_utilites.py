@@ -41,8 +41,12 @@ class ImageResizeNode:
     RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT")
     RETURN_NAMES = ("image_out", "mask_out", "width", "height")
     FUNCTION = "execute"
-    DESCRIPTION = "A versatile utility node for synchronously resizing images and masks. Supports multiple scaling methods (stretch, keep proportion, fill/crop, pad), various interpolation filters, and conditional logic to resize only when necessary. Automatically handles empty outputs if an input tensor is missing."
     CATEGORY = "utils"
+    DESCRIPTION = (
+        "A versatile utility node for synchronously resizing images and masks."
+        "Supports multiple scaling methods (stretch, keep proportion, fill/crop, pad), various interpolation filters, and conditional logic to resize only when necessary."
+        "Automatically handles empty outputs if an input tensor is missing."
+    )
 
     def execute(self, image=None, mask=None, width=512, height=512, method="stretch",
                 interpolation="nearest", condition="always", multiple_of=64):
@@ -190,7 +194,10 @@ class ResizeMethodControlNode:
     RETURN_NAMES = ("method",)
     FUNCTION    = "get_method"
     CATEGORY    = "utils"
-    DESCRIPTION = "An external controller panel specifically for setting the resizing strategy of ImageResizeNode. Outputs the selected method (stretch, keep proportion, fill/crop, or pad) as a combo parameter to be connected directly to the main node's 'method' input."
+    DESCRIPTION = (
+        "An external controller panel specifically for setting the resizing strategy of ImageResizeNode."
+        "Outputs the selected method (stretch, keep proportion, fill/crop, or pad) as a combo parameter to be connected directly to the main node's 'method' input."
+    )
 
     def get_method(self, method: str):
         return (method,)
@@ -214,7 +221,10 @@ class ResizeInterpolationControlNode:
     RETURN_NAMES = ("interpolation",)
     FUNCTION    = "get_interpolation"
     CATEGORY    = "utils"
-    DESCRIPTION = "An external controller panel for defining the resampling filter used by ImageResizeNode. Allows remote configuration of interpolation types (nearest, bilinear, bicubic, area, lanczos, etc.) by outputting the selected value to the main node's 'interpolation' input."
+    DESCRIPTION = (
+        "An external controller panel for defining the resampling filter used by ImageResizeNode." 
+        "Allows remote configuration of interpolation types (nearest, bilinear, bicubic, area, lanczos, etc.) by outputting the selected value to the main node's 'interpolation' input."
+    )
 
     def get_interpolation(self, interpolation: str):
         return (interpolation,)
@@ -337,9 +347,12 @@ class LoadImageWithMetadataNode:
     CATEGORY = "Image"
     RETURN_TYPES = ("IMAGE", "MASK", "METADATA_RAW", "METADATA_CLEAN")
     RETURN_NAMES = ("image", "mask", "Metadata RAW", "Metadata Clean")
-    DESCRIPTION = "Loads an image from the input directory, applies EXIF orientation correction, and outputs the image tensor along with an alpha mask (if present). Additionally, it provides both full raw metadata and a filtered 'clean' version containing only essential parameters for downstream workflows."
     OUTPUT_NODE = True
     FUNCTION   = "execute"
+    DESCRIPTION = (
+        "Loads an image from the input directory, applies EXIF orientation correction, and outputs the image tensor along with an alpha mask (if present)."
+        "Additionally, it provides both full raw metadata and a filtered 'clean' version containing only essential parameters for downstream workflows."
+    )
 
     # ---------------------------------------------------------------
     def execute(self, image):
@@ -418,7 +431,10 @@ class SaveImageNoMetaNode:
     FUNCTION = "save"
     CATEGORY = "ImageSaver"
     OUTPUT_NODE = True
-    DESCRIPTION = "Saves images to the output folder without embedding workflow metadata. Supports PNG/JPEG formats, automatic date stamping (%date%) with custom format support, and auto-indexing (e.g., 00001.png) for duplicate files."
+    DESCRIPTION = (
+        "Saves images to the output folder without embedding workflow metadata."
+        "Supports PNG/JPEG formats, automatic date stamping (%date%) with custom format support, and auto-indexing (e.g., 00001.png) for duplicate files."
+    )
 
     def _process_single_image(self, img):
         """Convert a single image (H,W,C) to uint8 RGB."""

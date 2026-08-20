@@ -106,7 +106,10 @@ class MyXYZHelper:
     RETURN_NAMES = ("x_value", "y_value", "z_value", "XYZ_GRID_CONTROL")
     FUNCTION = "run"
     CATEGORY = "Utils"
-    DESCRIPTION = "Orchestrates the grid layout by mapping the current execution index to specific X, Y, and Z values. Dynamically generates annotations for the XYZ plot headers based on input lists and styling parameters."
+    DESCRIPTION = (
+        "Orchestrates the grid layout by mapping the current execution index to specific X, Y, and Z values."
+        "Dynamically generates annotations for the XYZ plot headers based on input lists and styling parameters."
+    )
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
@@ -170,7 +173,10 @@ class MyXYGridAccumulator(FeedbackNode):
     RETURN_NAMES = ("full_page", "resized_page")
     FUNCTION = "run"
     CATEGORY = "Utils"
-    DESCRIPTION = "Buffers individual images into a visual grid as the XYZ loop progresses. Handles the accumulation of images per page, renders the preview grid with axis labels when full, and clears the batch upon completion of each slice."
+    DESCRIPTION = (
+        "Buffers individual images into a visual grid as the XYZ loop progresses."
+        "Handles the accumulation of images per page, renders the preview grid with axis labels when full, and clears the batch upon completion of each slice."
+    )
 
     def run(self, images, XYZ_GRID_CONTROL, show_previews, max_preview_mp, max_preview_side, unique_id):
         # Unpacking controls
@@ -411,7 +417,10 @@ class MyXYZSuperStacker:
     RETURN_NAMES = ("full_stack", "resized_stack")
     FUNCTION = "stack"
     CATEGORY = "Utils"
-    DESCRIPTION = "Collects all rendered XY pages into a single multi-page image sequence once the full XYZ dataset is generated. Acts as the final aggregation node to output the complete result set for saving or further processing."
+    DESCRIPTION = (
+        "Collects all rendered XY pages into a single multi-page image sequence once the full XYZ dataset is generated."
+        "Acts as the final aggregation node to output the complete result set for saving or further processing."
+    )
 
     def stack(self, full_page, resized_page, XYZ_GRID_CONTROL):
         *_, z_idx, total_z, g_index = XYZ_GRID_CONTROL
@@ -457,8 +466,11 @@ class XYZConflictValidatorAndSwitch:
     RETURN_NAMES = ("output",)
     FUNCTION = "execute"
     CATEGORY = "utils/XYZ"
-    DESCRIPTION = "Safeguards the XYZ pipeline against type mismatches by enforcing that only one active parameter exists per execution step. Automatically casts and outputs the current grid value (X, Y, or Z) as an Int, Float, or String based on configuration."
-    
+    DESCRIPTION = (
+        "Safeguards the XYZ pipeline against type mismatches by enforcing that only one active parameter exists per execution step."
+        "Automatically casts and outputs the current grid value (X, Y, or Z) as an Int, Float, or String based on configuration."
+    )
+
     def execute(self, output_type, global_val, **kwargs):
         # 1. Multiple choice check (Axis conflict)
         active_inputs = {k: v for k, v in kwargs.items() if v is not None}

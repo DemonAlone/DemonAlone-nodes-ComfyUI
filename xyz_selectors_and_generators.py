@@ -15,7 +15,11 @@ class DiffusionModelGeneratorNode:
     RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
-    DESCRIPTION = "Collects custom or pre-processed diffusion model file paths from multiple sources (up to 10 inputs). Outputs a consolidated list and string representation for seamless integration into multi-model workflows."
+    DESCRIPTION = (
+        "Collects custom or pre-processed diffusion model file paths from multiple sources (up to 10 inputs)."
+        "Outputs a consolidated list and string representation for seamless integration into multi-model workflows."
+    )
+
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
@@ -60,10 +64,15 @@ class SamplerGeneratorNode:
         samplers = get_sampler_list()
         inputs = {"required": {f"sampler_{i+1}": (samplers, {"default": "none"}) for i in range(14)}}
         return inputs
+
     RETURN_TYPES = ("STRING", "LIST")  
     FUNCTION = "generate_string"
     CATEGORY = "utils"
-    DESCRIPTION = "Generates a comma-separated string and list of any selected samplers from up to 10 inputs. Useful for dynamically constructing sampler lists based on user selection before feeding them into sampling nodes."
+    DESCRIPTION = (
+        "Generates a comma-separated string and list of any selected samplers from up to 10 inputs."
+        "Useful for dynamically constructing sampler lists based on user selection before feeding them into sampling nodes."
+    )
+
     def generate_string(self, **kwargs):
         selected = []
         for i in range(14):
@@ -86,7 +95,10 @@ class SamplerSelectorFromStringNode:
     RETURN_NAMES = ("sampler_name",)
     FUNCTION = "get_names"
     CATEGORY = "utils"
-    DESCRIPTION = "Converts a string input into a valid KSampler sampler object. Automatically validates the input and falls back to 'euler' if an unsupported sampler name is provided, ensuring workflow stability."
+    DESCRIPTION = (
+        "Converts a string input into a valid KSampler sampler object."
+        "Automatically validates the input and falls back to 'euler' if an unsupported sampler name is provided, ensuring workflow stability."
+    )
 
     def get_names(self, sampler_name_str):
         if sampler_name_str not in comfy.samplers.KSampler.SAMPLERS:
@@ -107,7 +119,11 @@ class SchedulerGeneratorNode:
     RETURN_TYPES = ("STRING", "LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
-    DESCRIPTION = "Generates a comma-separated string and list of any selected schedulers from up to 10 inputs. Used to dynamically assemble scheduler configurations from multiple source nodes before applying them to the sampling process."
+    DESCRIPTION = (
+        "Generates a comma-separated string and list of any selected schedulers from up to 10 inputs."
+        "Used to dynamically assemble scheduler configurations from multiple source nodes before applying them to the sampling process."
+    )
+
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
@@ -130,7 +146,10 @@ class SchedulerSelectorFromStringNode:
     RETURN_NAMES = ("scheduler",)
     FUNCTION = "get_names"
     CATEGORY = "utils"
-    DESCRIPTION = "Parses a string input to select a compatible KSampler scheduler. Includes basic validation to handle incorrect inputs gracefully by defaulting to the 'normal' scheduler when necessary."
+    DESCRIPTION = (
+        "Parses a string input to select a compatible KSampler scheduler."
+        "Includes basic validation to handle incorrect inputs gracefully by defaulting to the 'normal' scheduler when necessary."
+    )
 
     def get_names(self, scheduler_str):
         if scheduler_str not in comfy.samplers.KSampler.SCHEDULERS:
@@ -152,6 +171,7 @@ class ModelGeneratorNode:
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     DESCRIPTION = "Generates a combined list and comma-separated string of selected checkpoint files for flexible pipeline configuration."
+
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
@@ -178,8 +198,8 @@ class CheckpointSelectorNode:
     )
     RETURN_NAMES = ("ckpt_name", "ckpt_name_str")
     CATEGORY = "utils"
-    DESCRIPTION = "Retrieves checkpoint model names from the ComfyUI checkpoints folder and outputs both the filename tuple (for combo menus) and its string representation, allowing dynamic model selection in utility chains."
     FUNCTION = "get_ckpt_name"
+    DESCRIPTION = "Retrieves checkpoint model names from the ComfyUI checkpoints folder and outputs both the filename tuple (for combo menus) and its string representation, allowing dynamic model selection in utility chains."
 
     def get_ckpt_name(self, ckpt_name):
         return ckpt_name, ckpt_name
@@ -200,7 +220,10 @@ class TextEncoderGeneratorNode:
     RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
-    DESCRIPTION = "Consolidates up to 10 selected text encoders (CLIP models) into a unified string output and list. Enables the dynamic assembly of multi-stage conditioning pipelines by combining various encoder variants."
+    DESCRIPTION = (
+        "Consolidates up to 10 selected text encoders (CLIP models) into a unified string output and list."
+        "Enables the dynamic assembly of multi-stage conditioning pipelines by combining various encoder variants."
+    )
 
     def generate_string(self, **kwargs):
         selected = []
@@ -230,8 +253,11 @@ class TextEncoderSelectorNode:
     )
     RETURN_NAMES = ("enc_name", "enc_name_str")
     CATEGORY = "utils"
-    DESCRIPTION = "Selects a single Text Encoder (CLIP model) from the installed encoders. Provides both the encoder path compatible with loading nodes and a corresponding string output, enabling flexible routing of conditioning models within the workflow."
     FUNCTION = "get_encoder"
+    DESCRIPTION = (
+        "Selects a single Text Encoder (CLIP model) from the installed encoders."
+        "Provides both the encoder path compatible with loading nodes and a corresponding string output, enabling flexible routing of conditioning models within the workflow."
+    )
 
     def get_encoder(self, enc_name):
         return enc_name, enc_name
@@ -257,7 +283,11 @@ class VAEGeneratorNode:
     RETURN_TYPES = ("STRING","LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
-    DESCRIPTION = "Aggregates up to 10 selected VAE models into a single comma-separated string and a corresponding list. Designed to dynamically build a chain of VAEs for processing workflows that require multiple decode/encode stages."
+    DESCRIPTION = (
+        "Aggregates up to 10 selected VAE models into a single comma-separated string and a corresponding list."
+        "Designed to dynamically build a chain of VAEs for processing workflows that require multiple decode/encode stages."
+    )
+
     def generate_string(self, **kwargs):
         selected = []
         for i in range(10):
@@ -288,8 +318,11 @@ class VAESelectorNode:
     )
     RETURN_NAMES = ("vae_name", "vae_name_str")
     CATEGORY = "utils"
-    DESCRIPTION = "Selects a single VAE model from the available list. Outputs both the model path (for direct connection to nodes like Load VAE) and a plain text string representation of the selection for use in other utility nodes."
     FUNCTION = "get_vae"
+    DESCRIPTION = (
+        "Selects a single VAE model from the available list."
+        "Outputs both the model path (for direct connection to nodes like Load VAE) and a plain text string representation of the selection for use in other utility nodes."
+    )
 
     def get_vae(self, vae_name):
         return vae_name, vae_name
@@ -331,7 +364,10 @@ class LORASelectorNode:
     RETURN_TYPES = ("STRING", "LIST")
     FUNCTION = "generate_string"
     CATEGORY = "utils"
-    DESCRIPTION = "Aggregates up to 10 LoRA models with individually assigned weights, generating both a formatted prompt string and a structured list. Supports dynamic inclusion of empty values (placeholders) alongside active LoRAs for flexible pipeline construction."
+    DESCRIPTION = (
+        "Aggregates up to 10 LoRA models with individually assigned weights, generating both a formatted prompt string and a structured list."
+        "Supports dynamic inclusion of empty values (placeholders) alongside active LoRAs for flexible pipeline construction."
+    )
 
     def generate_string(self, **kwargs):
         parts = []      # will become the comma‑separated string output

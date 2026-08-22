@@ -1,3 +1,6 @@
+import re
+import itertools
+
 class CountListNode:
     @classmethod
     def INPUT_TYPES(cls):

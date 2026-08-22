@@ -39,8 +39,8 @@ def images_grid_by_x(
     
     # Place each image into its appropriate position in the grid
     for idx, img in enumerate(images):
-        y_idx = idx // x_count
-        x_idx = idx % x_count
+        x_idx = idx // y_count
+        y_idx = idx % y_count
         x = x_idx * (cell_w + gap)
         y = y_idx * (cell_h + gap)
         # Center the image within its cell

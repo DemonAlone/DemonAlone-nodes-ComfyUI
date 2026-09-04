@@ -121,11 +121,7 @@ class DA_LatentLoader:
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "load_latent"
     CATEGORY = "latent"
-    DESCRIPTION = (
-        "Loads previously saved latent tensors (.latent or .safetensors) from the current output directory."
-        "Automatically detects and parses both modern JSON-wrapped formats (supporting float32 tensors) and legacy binary formats (pickle/torch/safetensors)."
-        "Ensures 4D tensor shape compatibility by broadcasting missing dimensions. Logs loaded tensor statistics (shape, min/max/mean) for debugging."
-    )
+    DESCRIPTION = "Loads previously saved latent tensors from output directory safely."
 
     def load_latent(self, latent_file):
         if latent_file == "[No latents found in output]":
@@ -167,32 +163,35 @@ class DA_LatentLoader:
         while i < len(data):
             ch = data[i]
             if in_string:
-                if ch == ord('\\'):
+                if ch == 92:
                     i += 1
-                elif ch == ord('"'):
+                elif ch == 34:
                     in_string = False
             else:
-                if ch == ord('"'):
+                if ch == 34:
                     in_string = True
-                elif ch == ord('{'):
+                elif ch == 123:
                     depth += 1
-                elif ch == ord('}'):
+                elif ch == 125:
                     depth -= 1
                     if depth == 0:
                         return i + 1
             i += 1
         return -1
     def _legacy_load(self, blob):
-        import io, pickle
-        for loader in [
-            lambda b: pickle.loads(b),
-            lambda b: torch.load(io.BytesIO(b), map_location='cpu'),
-            lambda b: __import__('safetensors.torch', fromlist=['load']).load(b) if len(b) > 0 else None,
-        ]:
+        import io
+        from safetensors.torch import load as safetensors_load
+
+        loaders = [
+            lambda b: torch.load(io.BytesIO(b), map_location='cpu', weights_only=True),
+            lambda b: safetensors_load(b) if len(b) > 0 else None,
+        ]
+        
+        for loader in loaders:
             try:
                 obj = loader(blob)
                 return self._extract(obj)
-            except:
+            except Exception:
                 continue
         return None
     def _extract(self, obj):

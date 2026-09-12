@@ -323,7 +323,7 @@ class LoadImageWithMetadataNode:
         exclude_files  = {"Thumbs.db", "*.DS_Store", "desktop.ini", "*.lock"}
         exclude_folders = {"clipspace", ".*"}
 
-        valid_extensions = ('.jpg', '.jpeg', '.png', '.webp', 'bmp', 'tiff', 'tif')
+        valid_extensions = ('.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif')
         file_list = []
 
         for root, dirs, files in os.walk(input_dir, followlinks=True):
@@ -406,14 +406,6 @@ class LoadImageWithMetadataNode:
 
 
 class SaveImageNoMetaNode:
-    """
-    Saves an image without workflow/metadata.
-    Supports %date% placeholder which is replaced by yyyy-mm-dd or a custom mask.
-    Supports png and jpg formats.
-    Always saves the file inside the `output/<relative path>` folder.
-    An index is added automatically (00001, 00002 ...).
-    Now supports image batches: each frame is saved with a unique index.
-    """
     @classmethod
     def INPUT_TYPES(cls):
         return {

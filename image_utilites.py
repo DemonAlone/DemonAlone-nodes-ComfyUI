@@ -49,7 +49,7 @@ class ImageResizeNode:
     )
 
     def execute(self, image=None, mask=None, width=512, height=512, method="stretch",
-                interpolation="nearest", condition="always", multiple_of=64):
+                interpolation="nearest", condition="always", multiple_of=1):
         has_image = image is not None
         has_mask = mask is not None
         if not (has_image or has_mask):
@@ -80,6 +80,15 @@ class ImageResizeNode:
             ratio = min(final_w / ow, final_h / oh)
             resize_w = round(ow * ratio)
             resize_h = round(oh * ratio)
+            
+            if multiple_of > 1:
+                resize_w = (resize_w // multiple_of) * multiple_of
+                resize_h = (resize_h // multiple_of) * multiple_of
+                
+            final_w = resize_w
+            final_h = resize_h
+
+
 
         elif method == "pad":
             ratio = min(final_w / ow, final_h / oh)

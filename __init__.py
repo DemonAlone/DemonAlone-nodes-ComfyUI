@@ -152,7 +152,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DA_BusOutNode": "BusOut",
     "DA_Enhanced_KSampler": "DA_Enhanced_KSampler",
     "DA_LatentLoader": "Latent Loader",
-    "DA_TiledUpscaler": "Tiled Upscaler (experemental)",
+    "DA_TiledUpscaler": "Tiled Upscaler [Experemental]",
     "DiffusionModelGeneratorNode": "Dynamic Diffusion Model Selector",
     "DiffusionModelSelectorNode": "Diffusion Model Selector",
     "ImageResizeNode": "Image and Mask Resize",

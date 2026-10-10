@@ -32,9 +32,10 @@ class ImageResizeNode:
                 "width": ("INT", {"default": 512, "min": 0, "max": 16834}),
                 "height": ("INT", {"default": 512, "min": 0, "max": 16834}),
                 "method": (["stretch", "keep proportion", "fill / crop", "pad"],),
-                "interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos"],),
+                "image_interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos", "hamming"], 
+                        {"tooltip": "This filter affects ONLY the image. Masks are always resized using 'nearest-exact' for mathematical precision and edge safety."}),
                 "condition": (["always", "downscale if bigger", "upscale if smaller", "if bigger area", "if smaller area"],),
-                "multiple_of": ("INT", {"default": 1, "min": 1, "max": 512, "tooltip": "1 = disable, otherwise round down to multiple"})
+                "multiple_of": ("INT", {"default": 0, "min": 0, "max": 512, "step": 8, "tooltip": "0 = disable, otherwise round down to multiple"})
             }
         }
     
@@ -49,7 +50,8 @@ class ImageResizeNode:
     )
 
     def execute(self, image=None, mask=None, width=512, height=512, method="stretch",
-                interpolation="nearest", condition="always", multiple_of=1):
+                image_interpolation="nearest", condition="always", multiple_of=1):
+        # Intercept the old name if it came from the old saved graph
         has_image = image is not None
         has_mask = mask is not None
         if not (has_image or has_mask):
@@ -81,7 +83,7 @@ class ImageResizeNode:
             resize_w = round(ow * ratio)
             resize_h = round(oh * ratio)
             
-            if multiple_of > 1:
+            if multiple_of > 0:
                 resize_w = (resize_w // multiple_of) * multiple_of
                 resize_h = (resize_h // multiple_of) * multiple_of
                 
@@ -131,13 +133,26 @@ class ImageResizeNode:
         if has_image:
             img = image.permute(0, 3, 1, 2)  # B,C,H,W
             if should_resize:
-                if interpolation == "lanczos" and comfy is not None:
+                if image_interpolation == "lanczos" and comfy is not None:
                     img = comfy.utils.lanczos(img, resize_w, resize_h)
+                elif image_interpolation == "hamming":
+                    # High-quality and fast downscale via Pillow on the CPU
+                    batch_list = []
+                    for tensor_img in image: # image has the form [B, H, W, C]
+                        # Convert a single frame tensor to PIL Image
+                        pil_img = Image.fromarray((tensor_img.cpu().numpy() * 255.0).clip(0, 255).astype(np.uint8))
+                        # Resize using Hamming method
+                        pil_res = pil_img.resize((resize_w, resize_h), resample=Image.Resampling.HAMMING)
+                        # Return to tensor [C, H, W]
+                        out_tensor = torch.from_numpy(np.array(pil_res).astype(np.float32) / 255.0).permute(2, 0, 1)
+                        batch_list.append(out_tensor)
+                    img = torch.stack(batch_list).to(image.device) # Putting the batch back together [B, C, H, W]
+
                 else:
                     kwargs = {"size": (resize_h, resize_w)}
-                    if interpolation in ("linear", "bilinear", "bicubic", "trilinear"):
+                    if image_interpolation in ("linear", "bilinear", "bicubic", "trilinear"):
                         kwargs["align_corners"] = False
-                    img = F.interpolate(img, mode=interpolation, **kwargs)
+                    img = F.interpolate(img, mode=image_interpolation, **kwargs)
 
                 if method == "pad":
                     img = F.pad(img, (pad_l, pad_r, pad_t, pad_b), mode='constant', value=0)
@@ -159,7 +174,7 @@ class ImageResizeNode:
                 raise ValueError(f"Unsupported mask shape: {mask.shape}")
 
             if should_resize:
-                msk = F.interpolate(msk, size=(resize_h, resize_w), mode='nearest')
+                msk = F.interpolate(msk, size=(resize_h, resize_w), mode='nearest-exact')
                 if method == "pad":
                     msk = F.pad(msk, (pad_l, pad_r, pad_t, pad_b), mode='constant', value=0)
                 elif method == "fill / crop":
@@ -170,8 +185,8 @@ class ImageResizeNode:
             batch = source.shape[0]
             mask_out = torch.zeros(batch, final_h, final_w)
 
-        # --- apply multiple_of (If >1) ---
-        if multiple_of > 1:
+        # --- apply multiple_of (If >0) ---
+        if multiple_of > 0:
             final_w = (final_w // multiple_of) * multiple_of
             final_h = (final_h // multiple_of) * multiple_of
             # important: crop/pad image and mask to new dimensions
@@ -216,18 +231,18 @@ class ResizeInterpolationControlNode:
     Outputs the chosen interpolation type.
     Can be connected to the 'interpolation' input of ImageResizeNode.
     """
-    INTERPOLATION = ["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos"]
+    INTERPOLATION = ["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos", "hamming"]
     
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "interpolation": (cls.INTERPOLATION,),
+                "image_interpolation": (cls.INTERPOLATION,),
             }
         }
 
     RETURN_TYPES = (INTERPOLATION,)
-    RETURN_NAMES = ("interpolation",)
+    RETURN_NAMES = ("image_interpolation",)
     FUNCTION    = "get_interpolation"
     CATEGORY    = "utils"
     DESCRIPTION = (
@@ -235,8 +250,8 @@ class ResizeInterpolationControlNode:
         "Allows remote configuration of interpolation types (nearest, bilinear, bicubic, area, lanczos, etc.) by outputting the selected value to the main node's 'interpolation' input."
     )
 
-    def get_interpolation(self, interpolation: str):
-        return (interpolation,)
+    def get_interpolation(self, image_interpolation: str):
+        return (image_interpolation,)
 
 
 #This node is based on CImageLoadWithMetadata from https://github.com/crystian/ComfyUI-Crystools

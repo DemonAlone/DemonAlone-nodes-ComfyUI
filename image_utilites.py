@@ -138,7 +138,7 @@ class ImageResizeNode:
                 elif image_interpolation == "hamming":
                     # High-quality and fast downscale via Pillow on the CPU
                     batch_list = []
-                    for tensor_img in image: # image имеет форму [B, H, W, C]
+                    for tensor_img in image: # image has the form [B, H, W, C]
                         # Convert a single frame tensor to PIL Image
                         pil_img = Image.fromarray((tensor_img.cpu().numpy() * 255.0).clip(0, 255).astype(np.uint8))
                         # Resize using Hamming method

@@ -50,7 +50,7 @@ class ImageResizeNode:
     )
 
     def execute(self, image=None, mask=None, width=512, height=512, method="stretch",
-                image_interpolation="nearest", condition="always", multiple_of=1):
+                image_interpolation="nearest", condition="always", multiple_of=0):
         # Intercept the old name if it came from the old saved graph
         has_image = image is not None
         has_mask = mask is not None
@@ -89,8 +89,6 @@ class ImageResizeNode:
                 
             final_w = resize_w
             final_h = resize_h
-
-
 
         elif method == "pad":
             ratio = min(final_w / ow, final_h / oh)

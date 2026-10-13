@@ -435,6 +435,10 @@ class SaveImageNoMetaNode:
                 "image": ("IMAGE",),
                 "path": ("STRING", {"default": "ComfyUI", "tooltip": "Relative path inside `output`. Use %date% for date."}),
                 "format": (["png", "jpg"],),
+                "quality": ("INT", {
+                    "default": 90, "min": 1, "max": 100, "step": 1,
+                    "tooltip": "JPEG quality. Ignored for PNG.",
+                }),
                 "preview": ("BOOLEAN", {"default": True}),
                 "date_mask": ("BOOLEAN", {"default": False, "label_on": "Custom Date", "label_off": "Default Date"}),
                 "custom_date_format": ("STRING", {"default": "yyyy-mm-dd", "tooltip": "Date format if custom mask is enabled (e.g., yyyy, dd-mm-yyyy)"}),
@@ -510,10 +514,10 @@ class SaveImageNoMetaNode:
                         max_idx = idx
         return max_idx + 1
 
-    def save(self, image, path: str, format: str, preview: bool, date_mask: bool, custom_date_format: str):
+    def save(self, image, path: str, format: str, quality: int, preview: bool, date_mask: bool, custom_date_format: str):
         if not path:
             raise ValueError("Save path is not specified")
-            
+        quality = max(1, min(100, int(quality)))    
         # Determine date string based on toggle
         current_date = datetime.now()
         date_str = current_date.strftime("%Y-%m-%d")
@@ -564,7 +568,7 @@ class SaveImageNoMetaNode:
             pil_img.info.clear()
             unique_path.parent.mkdir(parents=True, exist_ok=True)
             if format.lower() in ["jpg", "jpeg"]:
-                pil_img.save(str(unique_path), format="JPEG", quality=95)
+                pil_img.save(str(unique_path), format="JPEG", quality=quality)
             else:
                 pil_img.save(str(unique_path), format="PNG")
 

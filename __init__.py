@@ -40,20 +40,21 @@ from .other_list_tools import (
 from .ksamplers import (
     DA_Base_KSampler,
     DA_Enhanced_KSampler,
-    DA_TiledUpscaler,
-    
+    DA_TiledUpscaler, 
 )
 
 from .other_selectors import (
     BooleanSwitchNode,
     ClipSkipSliderNode,
     ControlNetModelSelectorNode,
+    DA_CFG_SelectorNode,
+    DA_DenoiseSelectorNode,
+    DA_StepsSelectorNode,
     FloatSelectorNode,
     PatchModelSelectorNode,
     PonyPrefixesNode,
     ShiftSliderNode,
     WanNumFramesNode,
-
 )
 
 from .xyz_plot import (
@@ -96,10 +97,13 @@ NODE_CLASS_MAPPINGS = {
     "DA_Base_KSampler": DA_Base_KSampler,
     "DA_BusInNode": DA_BusInNode,
     "DA_BusOutNode": DA_BusOutNode,
+    "DA_CFG_SelectorNode": DA_CFG_SelectorNode,
+    "DA_DenoiseSelectorNode": DA_DenoiseSelectorNode,
     "DA_Enhanced_KSampler": DA_Enhanced_KSampler,
     "DA_LatentLoader": DA_LatentLoader,
     "DA_SamplerSelectorNode": DA_SamplerSelectorNode,
     "DA_SchedulerSelectorNode": DA_SchedulerSelectorNode,
+    "DA_StepsSelectorNode": DA_StepsSelectorNode,
     "DA_TiledUpscaler": DA_TiledUpscaler,
     "DiffusionModelGeneratorNode": DiffusionModelGeneratorNode,
     "DiffusionModelSelectorNode": DiffusionModelSelectorNode,
@@ -154,10 +158,13 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DA_Base_KSampler": "DA_Base_KSampler",
     "DA_BusInNode": "BusIn",
     "DA_BusOutNode": "BusOut",
+    "DA_CFG_SelectorNode": "CFG Selector",
+    "DA_DenoiseSelectorNode": "Denoise Selector",
     "DA_Enhanced_KSampler": "DA_Enhanced_KSampler",
     "DA_LatentLoader": "Latent Loader",
     "DA_SamplerSelectorNode": " Sampler Selector",
     "DA_SchedulerSelectorNode": "Scheduler Selector",
+    "DA_StepsSelectorNode": "Steps Selector",
     "DA_TiledUpscaler": "Tiled Upscaler [Experemental]",
     "DiffusionModelGeneratorNode": "Dynamic Diffusion Model Selector",
     "DiffusionModelSelectorNode": "Diffusion Model Selector",

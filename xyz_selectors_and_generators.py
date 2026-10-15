@@ -202,10 +202,10 @@ class DA_SchedulerSelectorNode:
     )
     RETURN_NAMES = ("scheduler_name", "scheduler_name_str")
     CATEGORY = "utils"
-    FUNCTION = "get_names"
+    FUNCTION = "get_scheduler"
     DESCRIPTION = "This node enables you to select a specific sampling schedule by returning both its identifier and string representation for use in downstream ComfyUI nodes"
 
-    def get_sampler(self, scheduler_name):
+    def get_scheduler(self, scheduler_name):
         return scheduler_name, scheduler_name
 
 

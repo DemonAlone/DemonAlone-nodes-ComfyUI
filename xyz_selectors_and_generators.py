@@ -45,14 +45,17 @@ class DiffusionModelSelectorNode:
     RETURN_TYPES = (
         folder_paths.get_filename_list("diffusion_models"),
         "STRING",
+        "STRING",
     )
-    RETURN_NAMES = ("model_name", "model_name_str")
+    RETURN_NAMES = ("model_name", "model_name_str", "model_name_clean")
     CATEGORY = "utils"     # Folder in UI
+    FUNCTION = "get_model_name"
+    DESCRIPTION = "Retrieves diffusion model names from the ComfyUI diffusion_models folder and outputs filename tuple, full string representation, and a clean name without path and extension."
+    
 
-    FUNCTION = "get_model"
-
-    def get_model(self, model_name):
-        return model_name, model_name   
+    def get_model_name(self, model_name):
+        clean_name = os.path.splitext(os.path.basename(model_name))[0]
+        return (model_name, model_name, clean_name)   
 
 
 def get_sampler_list():
@@ -230,6 +233,7 @@ class ModelGeneratorNode:
         list_output = selected  
         return (string_output, list_output)
  
+
 class CheckpointSelectorNode:
     @classmethod
     def INPUT_TYPES(cls):
@@ -240,18 +244,23 @@ class CheckpointSelectorNode:
             }
         }
 
-    # First element in the tuple → combo, second → STRING
     RETURN_TYPES = (
         folder_paths.get_filename_list("checkpoints"),
         "STRING",
+        "STRING",
     )
-    RETURN_NAMES = ("ckpt_name", "ckpt_name_str")
+    RETURN_NAMES = ("ckpt_name", "ckpt_name_str", "ckpt_name_clean")
     CATEGORY = "utils"
     FUNCTION = "get_ckpt_name"
-    DESCRIPTION = "Retrieves checkpoint model names from the ComfyUI checkpoints folder and outputs both the filename tuple (for combo menus) and its string representation, allowing dynamic model selection in utility chains."
+    DESCRIPTION = "Retrieves checkpoint model names from the ComfyUI checkpoints folder and outputs filename tuple, full string representation, and a clean name without path and extension."
 
     def get_ckpt_name(self, ckpt_name):
-        return ckpt_name, ckpt_name
+        # 1. os.path.basename takes only the filename if there was a subpath there (e.g. 'SDXL/model.safetensors' -> 'model.safetensors')
+        # 2. os.path.splitext divides 'model.safetensors' by ('model', '.safetensors') and we take the [0] element.
+        clean_name = os.path.splitext(os.path.basename(ckpt_name))[0]
+        
+        return (ckpt_name, ckpt_name, clean_name)
+
 
 
 def get_text_encoder_list():

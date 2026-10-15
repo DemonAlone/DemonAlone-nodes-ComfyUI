@@ -207,12 +207,6 @@ class ClipSkipSliderNode:
         return (clip_skip,)
 
 class WanNumFramesNode:
-    RETURN_TYPES = ("INT",)
-    RETURN_NAMES = ("num_frames",)
-    FUNCTION = "execute"
-    CATEGORY = "utils"
-    DESCRIPTION = "Output integer value with strict range constraints (min: 1, max: 10000, step: 4)." 
-
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -224,6 +218,12 @@ class WanNumFramesNode:
                                    "step": 4}), 
             }
         }
+
+    RETURN_TYPES = ("INT",)
+    RETURN_NAMES = ("num_frames",)
+    FUNCTION = "execute"
+    CATEGORY = "utils"
+    DESCRIPTION = "Output integer value with strict range constraints (min: 1, max: 10000, step: 4)." 
 
     def execute(self, num_frames=None):
         """
@@ -255,6 +255,7 @@ class PatchModelSelectorNode:
         return patch_name, patch_name
 
 class ControlNetModelSelectorNode:
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -271,3 +272,72 @@ class ControlNetModelSelectorNode:
 
     def get_control_net_name(self, control_net_name):
         return control_net_name, control_net_name
+
+class DA_CFG_SelectorNode:
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "CFG": ("FLOAT", {"default": 7.0,
+                                    "min": 0.0,
+                                    "max": 100.0,
+                                    "step": 0.5})
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT",)        
+    RETURN_NAMES = ("CFG",)        
+    DESCRIPTION = "Applies a dynamic CFG value to the sampling process or subsequent operations."
+    FUNCTION = "run"               
+    CATEGORY = "utils"      
+
+    def run(self, CFG):
+       
+        return (CFG,)
+
+class DA_DenoiseSelectorNode:
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "denoise": ("FLOAT", {"default": 1.0,
+                                    "min": 0.0,
+                                    "max": 1.0,
+                                    "step": 0.01})
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT",)        
+    RETURN_NAMES = ("denoise",)        
+    DESCRIPTION = "Applies a dynamic denoise value to the sampling process or subsequent operations."
+    FUNCTION = "run"               
+    CATEGORY = "utils"      
+
+    def run(self, denoise):
+       
+        return (denoise,)
+
+class DA_StepsSelectorNode:
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "steps": ("INT", {"default": 20,
+                                    "min": 1,
+                                    "max": 10000,
+                                    "step": 1})
+            }
+        }
+
+    RETURN_TYPES = ("INT",)        
+    RETURN_NAMES = ("steps",)        
+    DESCRIPTION = "Applies a dynamic steps value to the sampling process or subsequent operations."
+    FUNCTION = "run"               
+    CATEGORY = "utils"      
+
+    def run(self, steps):
+       
+        return (steps,)

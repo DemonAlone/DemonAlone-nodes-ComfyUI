@@ -106,6 +106,30 @@ class SamplerSelectorFromStringNode:
             return ("euler",)
         return (sampler_name_str,)
 
+def get_sampler_list_only():
+    return comfy.samplers.KSampler.SAMPLERS
+
+class DA_SamplerSelectorNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        samplers = get_sampler_list_only()
+        return {
+            "required": {
+                "sampler_name": (samplers,),
+            }
+        }
+
+    RETURN_TYPES = (
+        comfy.samplers.KSampler.SAMPLERS,
+        "STRING",
+    )
+    RETURN_NAMES = ("sampler_name", "sampler_name_str")
+    CATEGORY = "utils"
+    FUNCTION = "get_sampler"
+    DESCRIPTION = "This node allows you to select a specific sampling method by returning both its identifier and string representation for use in downstream ComfyUI nodes."
+
+    def get_sampler(self, sampler_name):
+        return sampler_name, sampler_name
 
 def get_scheduler_list():
     return ["none"] + comfy.samplers.KSampler.SCHEDULERS
@@ -155,6 +179,31 @@ class SchedulerSelectorFromStringNode:
         if scheduler_str not in comfy.samplers.KSampler.SCHEDULERS:
             return ("normal",)
         return (scheduler_str,)
+
+def get_scheduler_list_only():
+    return comfy.samplers.KSampler.SCHEDULERS
+
+class DA_SchedulerSelectorNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        samplers = get_scheduler_list_only()
+        return {
+            "required": {
+                "scheduler_name": (samplers,),
+            }
+        }
+
+    RETURN_TYPES = (
+        comfy.samplers.KSampler.SCHEDULERS,
+        "STRING",
+    )
+    RETURN_NAMES = ("scheduler_name", "scheduler_name_str")
+    CATEGORY = "utils"
+    FUNCTION = "get_names"
+    DESCRIPTION = "This node enables you to select a specific sampling schedule by returning both its identifier and string representation for use in downstream ComfyUI nodes"
+
+    def get_sampler(self, scheduler_name):
+        return scheduler_name, scheduler_name
 
 
 def get_checkpoint_list():

@@ -65,6 +65,8 @@ from .xyz_plot import (
 
 from .xyz_selectors_and_generators import (
     CheckpointSelectorNode,
+    DA_SamplerSelectorNode,
+    DA_SchedulerSelectorNode,
     DiffusionModelGeneratorNode,
     DiffusionModelSelectorNode,
     LORASelectorNode,
@@ -96,6 +98,8 @@ NODE_CLASS_MAPPINGS = {
     "DA_BusOutNode": DA_BusOutNode,
     "DA_Enhanced_KSampler": DA_Enhanced_KSampler,
     "DA_LatentLoader": DA_LatentLoader,
+    "DA_SamplerSelectorNode": DA_SamplerSelectorNode,
+    "DA_SchedulerSelectorNode": DA_SchedulerSelectorNode,
     "DA_TiledUpscaler": DA_TiledUpscaler,
     "DiffusionModelGeneratorNode": DiffusionModelGeneratorNode,
     "DiffusionModelSelectorNode": DiffusionModelSelectorNode,
@@ -152,6 +156,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DA_BusOutNode": "BusOut",
     "DA_Enhanced_KSampler": "DA_Enhanced_KSampler",
     "DA_LatentLoader": "Latent Loader",
+    "DA_SamplerSelectorNode": " Sampler Selector",
+    "DA_SchedulerSelectorNode": "Scheduler Selector",
     "DA_TiledUpscaler": "Tiled Upscaler [Experemental]",
     "DiffusionModelGeneratorNode": "Dynamic Diffusion Model Selector",
     "DiffusionModelSelectorNode": "Diffusion Model Selector",

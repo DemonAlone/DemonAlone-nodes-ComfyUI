@@ -79,6 +79,14 @@ class ListCreaterNode:
 
         return (cleaned,)
 
+class NativeListCreaterNode(ListCreaterNode): # Наследуем всё от вашей старой ноды
+    # Переопределяем только типы возвращаемых данных для нового ядра
+    RETURN_TYPES = ("STRING",) 
+    OUTPUT_IS_LIST = (True,) # Включаем нативную логику списков
+    
+    CATEGORY = "utility/text/native" # Кладем в отдельную подкатегорию, чтобы не путать
+    DESCRIPTION = "Native version of Text Splitter for official StartLoop nodes."
+
 class ListRerouteNode:
     @classmethod
     def INPUT_TYPES(s):

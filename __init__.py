@@ -34,6 +34,7 @@ from .other_list_tools import (
     ListCreaterNode,
     ListRerouteNode,
     ListCombinerNode,
+    NativeListCreaterNode,
     MultiPlaceholderPromptList,
 )
 
@@ -82,6 +83,11 @@ from .xyz_selectors_and_generators import (
     VAESelectorNode,
 )
 
+from .XYZ_plot_V2 import (
+    ImageCounterNode,
+    NativeXYZGridRenderer,
+)
+
 NODE_CLASS_MAPPINGS = {
     "AnyAdapterNode": AnyAdapterNode,
     "AnyConcatNode": AnyConcatNode,
@@ -108,6 +114,7 @@ NODE_CLASS_MAPPINGS = {
     "DiffusionModelGeneratorNode": DiffusionModelGeneratorNode,
     "DiffusionModelSelectorNode": DiffusionModelSelectorNode,
     "ImageResizeNode": ImageResizeNode,
+    "ImageCounterNode": ImageCounterNode,
     "FloatSelectorNode": FloatSelectorNode,
     "ListCombinerNode": ListCombinerNode,
     "ListCreaterNode": ListCreaterNode,
@@ -120,6 +127,8 @@ NODE_CLASS_MAPPINGS = {
     "MyXYZHelper": MyXYZHelper,
     "MyXYGridAccumulator": MyXYGridAccumulator,
     "MyXYZSuperStacker": MyXYZSuperStacker,
+    "NativeXYZGridRenderer": NativeXYZGridRenderer,
+    "NativeListCreaterNode": NativeListCreaterNode,
     "OptionalCondMergeNode": OptionalCondMergeNode,
     "PatchModelSelectorNode": PatchModelSelectorNode,
     "PonyPrefixesNode": PonyPrefixesNode,
@@ -168,6 +177,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DA_TiledUpscaler": "Tiled Upscaler [Experemental]",
     "DiffusionModelGeneratorNode": "Dynamic Diffusion Model Selector",
     "DiffusionModelSelectorNode": "Diffusion Model Selector",
+    "ImageCounterNode": "ImageCounterNode",
     "ImageResizeNode": "Image and Mask Resize",
     "FloatSelectorNode": "Float Selector (legacy)",
     "ListCombinerNode": "List Combiner",
@@ -181,6 +191,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MyXYZHelper": "MyXYZHelper",
     "MyXYGridAccumulator": "MyXYGridAccumulator",
     "MyXYZSuperStacker": "MyXYZSuperStacker",
+    "NativeListCreaterNode": "Native List Creater",
+    "NativeXYZGridRenderer": "NativeXYZGridRenderer",
     "OptionalCondMergeNode": "Optional Conditioning Merge",
     "PatchModelSelectorNode": "Patch Model Selector",
     "PonyPrefixesNode": "Rating, Score, Source for Pony",

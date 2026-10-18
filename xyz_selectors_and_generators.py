@@ -41,21 +41,20 @@ class DiffusionModelSelectorNode:
             }
         }
 
-    # First element → combo, second → STRING
     RETURN_TYPES = (
-        folder_paths.get_filename_list("diffusion_models"),
+        folder_paths.get_filename_list("diffusion_models"), 
         "STRING",
-        "STRING",
+        "STRING", 
     )
     RETURN_NAMES = ("model_name", "model_name_str", "model_name_clean")
     CATEGORY = "utils"     # Folder in UI
     FUNCTION = "get_model_name"
-    DESCRIPTION = "Retrieves diffusion model names from the ComfyUI diffusion_models folder and outputs filename tuple, full string representation, and a clean name without path and extension."
-    
+    DESCRIPTION = "Retrieves diffusion model names and outputs filename tuple, full string representation, and a clean name without path and extension."
 
-    def get_model_name(self, model_name):
+
+    def get_model_name(self, model_name):     
         clean_name = os.path.splitext(os.path.basename(model_name))[0]
-        return (model_name, model_name, clean_name)   
+        return model_name, model_name, clean_name   
 
 
 def get_sampler_list():

@@ -35,6 +35,7 @@ from .other_list_tools import (
     ListRerouteNode,
     ListCombinerNode,
     NativeListCreaterNode,
+    NativeMultiPlaceholderPromptList,
     MultiPlaceholderPromptList,
 )
 
@@ -127,8 +128,9 @@ NODE_CLASS_MAPPINGS = {
     "MyXYZHelper": MyXYZHelper,
     "MyXYGridAccumulator": MyXYGridAccumulator,
     "MyXYZSuperStacker": MyXYZSuperStacker,
-    "NativeXYZGridRenderer": NativeXYZGridRenderer,
     "NativeListCreaterNode": NativeListCreaterNode,
+    "NativeMultiPlaceholderPromptList": NativeMultiPlaceholderPromptList,
+    "NativeXYZGridRenderer": NativeXYZGridRenderer,
     "OptionalCondMergeNode": OptionalCondMergeNode,
     "PatchModelSelectorNode": PatchModelSelectorNode,
     "PonyPrefixesNode": PonyPrefixesNode,
@@ -192,6 +194,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MyXYGridAccumulator": "MyXYGridAccumulator",
     "MyXYZSuperStacker": "MyXYZSuperStacker",
     "NativeListCreaterNode": "Native List Creater",
+    "NativeMultiPlaceholderPromptList": "NativeMultiPlaceholderPromptList",
     "NativeXYZGridRenderer": "NativeXYZGridRenderer",
     "OptionalCondMergeNode": "Optional Conditioning Merge",
     "PatchModelSelectorNode": "Patch Model Selector",

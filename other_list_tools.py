@@ -79,13 +79,42 @@ class ListCreaterNode:
 
         return (cleaned,)
 
-class NativeListCreaterNode(ListCreaterNode): # Наследуем всё от вашей старой ноды
-    # Переопределяем только типы возвращаемых данных для нового ядра
+class NativeListCreaterNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "Separator": ("STRING", {"default": ",", "tooltip": "\\n → newline"}),
+                "RemoveEmptyValues": ("BOOLEAN", {"default": False, "label_on": True, "label_off": False}),
+                "Text": ("STRING", {"multiline": True}),
+            }
+        }
+
     RETURN_TYPES = ("STRING",) 
-    OUTPUT_IS_LIST = (True,) # Включаем нативную логику списков
-    
-    CATEGORY = "utility/text/native" # Кладем в отдельную подкатегорию, чтобы не путать
-    DESCRIPTION = "Native version of Text Splitter for official StartLoop nodes."
+    OUTPUT_IS_LIST = (True,)   # Enable native list mode for loops
+    FUNCTION = "split_text_native"
+    CATEGORY = "utility/text/native"
+    DESCRIPTION = "Splits text strings into a list of items using custom delimiters"
+
+    def split_text_native(self, Text: str, Separator: str, RemoveEmptyValues: bool):
+        # Handle newline delimiter
+        sep = "\n" if Separator == r"\n" else Separator
+        
+        # Break up the text
+        parts = Text.split(sep)
+        
+        # In the native version, we LEAVE the lines clean, removing only the spaces around the edges,
+        # without forced replacement of internal hyphens with spaces, so as not to break the scheduler.
+        cleaned = [p.strip() for p in parts]
+
+        if RemoveEmptyValues:
+            cleaned = [p for p in cleaned if p]
+
+        # If the list is empty, give an empty string so that the loop does not crash
+        if not cleaned:
+            cleaned = [""]
+
+        return (cleaned,)
 
 class ListRerouteNode:
     @classmethod
@@ -216,3 +245,37 @@ class MultiPlaceholderPromptList:
             results.append(cleaned_prompt.strip())
 
         return (results,)
+
+class NativeMultiPlaceholderPromptList:
+    @classmethod
+    def INPUT_TYPES(cls):
+
+        return MultiPlaceholderPromptList.INPUT_TYPES()
+
+    RETURN_TYPES = ("STRING",)
+    OUTPUT_IS_LIST = (True,)
+    FUNCTION = "generate_native"
+    CATEGORY = "utility/text/native"
+    DESCRIPTION = "Native version of the prompt combination generator. Outputs a stream of strings directly to the list input of the StartLoop node."
+
+    def generate_native(self, Template, values_separator, placeholder1, values1, placeholder2, values2, placeholder3, values3):
+        # Call the original generation logic (so as not to duplicate the combination code)
+        # It will return us a standard monolithic Python list with all combinations
+        orig_node = MultiPlaceholderPromptList()
+        res_tuple = orig_node.generate(Template, values_separator, placeholder1, values1, placeholder2, values2, placeholder3, values3)
+        
+        # Retrieve a list of strings from a tuple
+        prompt_list = res_tuple[0]
+        
+        # Final cleanup for the native scheduler: ensuring there are no hidden 
+        cleaned_prompts = []
+        for prompt in prompt_list:
+            # Remove any random line breaks inside the finished prompt
+            safe_prompt = prompt.replace("\n", " ").strip()
+            if safe_prompt:
+                cleaned_prompts.append(safe_prompt)
+                
+        if not cleaned_prompts:
+            cleaned_prompts = [""]
+            
+        return (cleaned_prompts,)

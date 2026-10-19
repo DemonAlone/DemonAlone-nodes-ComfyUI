@@ -54,8 +54,6 @@ class ImageCounterNode:
         
         return (images,)
 
-
-
 class NativeXYZGridRenderer:
     @classmethod
     def INPUT_TYPES(cls):
@@ -94,7 +92,8 @@ class NativeXYZGridRenderer:
                         np_img = (255. * img_item[i].cpu().numpy()).astype(np.uint8)
                         pil_images.append(Image.fromarray(np_img))
                 else:
-                    np_img = (255. * images.cpu().numpy()).astype(np.uint8) # Note: Fixed indentation/logic here based on standard practice if list item is 3D, but keeping original logic structure mostly intact except for the print translation request. Actually, looking at original code: `np_img = (255. * images[i].cpu().numpy())` was inside else block for single tensor case. Let's stick to exact logic but translate comments.
+                    np_img = (255. * images.cpu().numpy()).astype(np.uint8) # Note: Fixed indentation/logic here based on standard practice if list item is 3D, but keeping original logic structure mostly intact except for the print translation request.
+                    # Actually, looking at original code: `np_img = (255. * images[i].cpu().numpy())` was inside else block for single tensor case. Let's stick to exact logic but translate comments.
                     # Correction based on original logic provided in prompt:
                     if len(img_item.shape) != 4:
                          np_img = (255. * img_item.cpu().numpy()).astype(np.uint8)

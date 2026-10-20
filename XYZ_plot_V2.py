@@ -4,10 +4,9 @@ from PIL import Image, ImageDraw, ImageFont
 import folder_paths
 from server import PromptServer
 
-
 class ImageCounterNode:
     global_image_count = 0  
-    last_prompt_id = None  # Here we will store the ID of the current task being executed
+    last_prompt_id = None  
 
     @classmethod
     def INPUT_TYPES(s):
@@ -18,38 +17,51 @@ class ImageCounterNode:
         }
 
     RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("images",)
     FUNCTION = "count_images"
     CATEGORY = "utility/logging"
-    DESCRIPTION = "A simple image counter that outputs the frame number to the console and resets automatically between graph runs to ensure accurate counting in nested loops where standard JavaScript-based counters fail"
-   
+
     def count_images(self, images):
         current_prompt_id = None
+
+        # Reading the server queue from memory for auto-reset
+
         try:
             if PromptServer.instance and hasattr(PromptServer.instance, 'prompt_queue'):
-                # queue_running — this is a list of currently active tasks (usually contains 1 element)
                 queue_running, queue_pending = PromptServer.instance.prompt_queue.get_current_queue()
-                
-                if len(queue_running) > 0:
-                    # Extracting prompt_id from the first active task in server memory
-                    # ComfyUI queue item structure: [sequential_number, prompt_id, prompt_text, extra_data, ...]
-                    current_prompt_id = queue_running[0][1]
+                if queue_running is not None and isinstance(queue_running, list) and len(queue_running) > 0:
+                    current_prompt_id = queue_running
         except Exception as e:
-            print(f"[ImageCounterNode] Error reading internal server queue: {e}")
+            pass
 
-        # --- DEBUG AND AUTO RESET ---
-        # If we managed to extract the ID and it has changed (or this is the very first run)
+        # Reset counter on new Queue run
         if current_prompt_id is not None and current_prompt_id != ImageCounterNode.last_prompt_id:
             ImageCounterNode.global_image_count = 0
             ImageCounterNode.last_prompt_id = current_prompt_id
-            print(f"[XYZ Plot] Counter successfully reset to 0.\n")
+            print(f"\n[XYZ Plot] New run detected. Counter reset to 0.\n")
 
-        # Counting the size of the current batch of images
-        batch_size = images.shape[0]
+        # Explicitly take only the first element of the tuple shape (number of image in batch)
+        # This ensures that batch_size is a clean INT, not a torch.Size object
+        if len(images.shape) == 4:
+            batch_size = int(images.shape[0])
+        else:
+            batch_size = 1
+
         ImageCounterNode.global_image_count += batch_size
         
-        # Printing a nice log to console
+        # Retrieves the exact multiplied number from our axis calculator stored in class memory
+        # (Uses safe getattr method in case the calculator hasn't run yet)
+
+        actual_total = getattr(NativeXYZTotalCalculator, 'final_total_grid_images', 1)
+
+        # Prints a nice log to the console
         print(f"======================================")
-        print(f"[XYZ Plot] Frame #: {ImageCounterNode.global_image_count}")
+        if actual_total > 1:
+            print(f"[XYZ Plot] Progress: Image #{ImageCounterNode.global_image_count} of {actual_total}")
+            percent = (ImageCounterNode.global_image_count / actual_total) * 100
+            print(f"[XYZ Plot] Completed: {percent:.1f}%")
+        else:
+            print(f"[XYZ Plot] Image #: {ImageCounterNode.global_image_count}")
         print(f"======================================\n")
         
         return (images,)
@@ -273,3 +285,59 @@ class NativeXYZGridRenderer:
         output_batch = torch.cat(tensor_list, dim=0)
 
         return (output_batch,)
+
+class NativeXYZTotalCalculator:
+    # Static global variable where ONE final number of frames will be stored
+    final_total_grid_images = 1
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "x_axis_list": ("STRING",), 
+                "y_axis_list": ("STRING",),
+                "z_axis_list": ("STRING",),
+            }
+        }
+
+    INPUT_IS_LIST = True # Force the kernel to give us all three lists entirely at once
+    RETURN_TYPES = ("INT",)
+    RETURN_NAMES = ("total_images",)
+    FUNCTION = "calculate_total"
+    CATEGORY = "utility/text/native"
+    DESCRIPTION = "Accepts three native lists of axes, multiplies their lengths and saves the total volume of the Plot for the logger."
+
+    def calculate_total(self, x_axis_list, y_axis_list, z_axis_list):
+        # Clean and safe calculation of X-axis length
+        if isinstance(x_axis_list, list):
+            len_x = len(x_axis_list)
+        else:
+            len_x = 1
+
+        # Clean and safe calculation of Y axis length (WITHOUT walrus operators)
+        if isinstance(y_axis_list, list):
+            len_y = len(y_axis_list)
+        else:
+            len_y = 1
+
+        # Clean and safe calculation of Z axis length 
+        if isinstance(z_axis_list, list):
+            len_z = len(z_axis_list)
+        else:
+            len_z = 1
+
+        # Multiply the active axes to obtain the exact amount of generation
+        total = len_x * len_y * len_z
+        
+        if total < 1:
+            total = 1
+
+        # save ONE resulting number into class memory
+        NativeXYZTotalCalculator.final_total_grid_images = total
+        
+        print(f"\n======================================")
+        print(f"[XYZ Calculator] Grid calculation successful!")
+        print(f"[XYZ Calculator] Formula: X({len_x}) * Y({len_y}) * Z({len_z}) = {total} images.")
+        print(f"======================================\n")
+        
+        return (total,)

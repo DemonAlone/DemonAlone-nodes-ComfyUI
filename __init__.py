@@ -34,6 +34,7 @@ from .other_list_tools import (
     ListCreaterNode,
     ListRerouteNode,
     ListCombinerNode,
+    NativeCountListNode,
     NativeListCreaterNode,
     NativeMultiPlaceholderPromptList,
     MultiPlaceholderPromptList,
@@ -87,6 +88,7 @@ from .xyz_selectors_and_generators import (
 from .XYZ_plot_V2 import (
     ImageCounterNode,
     NativeXYZGridRenderer,
+    NativeXYZTotalCalculator,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -128,9 +130,11 @@ NODE_CLASS_MAPPINGS = {
     "MyXYZHelper": MyXYZHelper,
     "MyXYGridAccumulator": MyXYGridAccumulator,
     "MyXYZSuperStacker": MyXYZSuperStacker,
+    "NativeCountListNode": NativeCountListNode,
     "NativeListCreaterNode": NativeListCreaterNode,
     "NativeMultiPlaceholderPromptList": NativeMultiPlaceholderPromptList,
     "NativeXYZGridRenderer": NativeXYZGridRenderer,
+    "NativeXYZTotalCalculator": NativeXYZTotalCalculator,
     "OptionalCondMergeNode": OptionalCondMergeNode,
     "PatchModelSelectorNode": PatchModelSelectorNode,
     "PonyPrefixesNode": PonyPrefixesNode,
@@ -192,7 +196,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MultiPlaceholderPromptList": "MultiPlaceholder Prompt List",
     "MyXYZHelper": "MyXYZHelper",
     "MyXYGridAccumulator": "MyXYGridAccumulator",
+    "NativeXYZTotalCalculator": "NativeXYZTotalCalculator",
     "MyXYZSuperStacker": "MyXYZSuperStacker",
+    "NativeCountListNode": "NativeCountListNode",
     "NativeListCreaterNode": "Native List Creater",
     "NativeMultiPlaceholderPromptList": "NativeMultiPlaceholderPromptList",
     "NativeXYZGridRenderer": "NativeXYZGridRenderer",

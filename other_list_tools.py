@@ -279,3 +279,27 @@ class NativeMultiPlaceholderPromptList:
             cleaned_prompts = [""]
             
         return (cleaned_prompts,)
+
+class NativeCountListNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "input_list": ("STRING",),
+            }
+        }
+
+    INPUT_IS_LIST = True
+    RETURN_TYPES = ("INT",)
+    RETURN_NAMES = ("length",)
+    FUNCTION = "get_length_native"
+    CATEGORY = "utility/text/native"
+    DESCRIPTION = "Counts the number of items in the native list to calculate the total volume of the XYZ plot."
+
+    def get_length_native(self, input_list):
+        # input_list because of the INPUT_IS_LIST flag always comes wrapped in a Python array
+        if isinstance(input_list, list):
+            length = len(input_list)
+        else:
+            length = 1
+        return (length,)

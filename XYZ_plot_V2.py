@@ -3,10 +3,13 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import folder_paths
 from server import PromptServer
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ImageCounterNode:
-    global_image_count = 0  
-    last_prompt_id = None  
+    global_image_count = 0
+    last_prompt_id = None
 
     @classmethod
     def INPUT_TYPES(s):
@@ -32,7 +35,7 @@ class ImageCounterNode:
                 if queue_running is not None and isinstance(queue_running, list) and len(queue_running) > 0:
                     current_prompt_id = queue_running
         except Exception as e:
-            pass
+            logger.debug(f"Failed to read server queue for auto-reset: {e}")
 
         # Reset counter on new Queue run
         if current_prompt_id is not None and current_prompt_id != ImageCounterNode.last_prompt_id:

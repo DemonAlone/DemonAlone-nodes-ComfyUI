@@ -3,8 +3,10 @@ import json
 import re
 import itertools
 import torch
+import logging
 import folder_paths
 from nodes import VAEDecode, PreviewImage
+logger = logging.getLogger(__name__)
 
 
 class OptionalCondMergeNode:
@@ -191,7 +193,8 @@ class DA_LatentLoader:
             try:
                 obj = loader(blob)
                 return self._extract(obj)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Legacy loader attempt failed: {e}")
                 continue
         return None
     def _extract(self, obj):

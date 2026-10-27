@@ -15,12 +15,11 @@ from PIL.PngImagePlugin import PngImageFile
 from PIL.ExifTags import TAGS
 import piexif
 import re
-
 import folder_paths
 
 logger = logging.getLogger(__name__)
 
-# ImageResizeNode is based on  Image Resize from https://github.com/cubiq/ComfyUI_essentials
+# ImageResizeNode is based on Image Resize from https://github.com/cubiq/ComfyUI_essentials
 
 class ImageResizeNode:
     @classmethod
@@ -44,8 +43,8 @@ class ImageResizeNode:
     FUNCTION = "execute"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "A versatile utility node for synchronously resizing images and masks."
-        "Supports multiple scaling methods (stretch, keep proportion, fill/crop, pad), various interpolation filters, and conditional logic to resize only when necessary."
+        "A versatile utility node for synchronously resizing images and masks. "
+        "Supports multiple scaling methods (stretch, keep proportion, fill/crop, pad), various interpolation filters, and conditional logic to resize only when necessary. "
         "Automatically handles empty outputs if an input tensor is missing."
     )
 
@@ -214,11 +213,11 @@ class ResizeMethodControlNode:
 
     RETURN_TYPES = (METHODS,) 
     RETURN_NAMES = ("method",)
-    FUNCTION    = "get_method"
-    CATEGORY    = "utils"
+    FUNCTION = "get_method"
+    CATEGORY = "utils"
     DESCRIPTION = (
-        "An external controller panel specifically for setting the resizing strategy of ImageResizeNode."
-        "Outputs the selected method (stretch, keep proportion, fill/crop, or pad) as a combo parameter to be connected directly to the main node's 'method' input."
+        "An external controller panel specifically for setting the resizing strategy of ImageResizeNode. "
+        "Outputs the selected method as a combo parameter to be connected directly to the main node's 'method' input."
     )
 
     def get_method(self, method: str):
@@ -241,18 +240,18 @@ class ResizeInterpolationControlNode:
 
     RETURN_TYPES = (INTERPOLATION,)
     RETURN_NAMES = ("image_interpolation",)
-    FUNCTION    = "get_interpolation"
-    CATEGORY    = "utils"
+    FUNCTION = "get_interpolation"
+    CATEGORY = "utils"
     DESCRIPTION = (
-        "An external controller panel for defining the resampling filter used by ImageResizeNode." 
-        "Allows remote configuration of interpolation types (nearest, bilinear, bicubic, area, lanczos, etc.) by outputting the selected value to the main node's 'interpolation' input."
+        "An external controller panel for defining the resampling filter used by ImageResizeNode. "
+        "Allows remote configuration of interpolation types by outputting the selected value to the main node's input."
     )
 
     def get_interpolation(self, image_interpolation: str):
         return (image_interpolation,)
 
 
-#This node is based on CImageLoadWithMetadata from https://github.com/crystian/ComfyUI-Crystools
+# This node is based on CImageLoadWithMetadata from https://github.com/crystian/ComfyUI-Crystools
 def build_metadata(image_path: str):
     if not Path(image_path).is_file():
         raise FileNotFoundError(f"File not found: {image_path}")
@@ -267,7 +266,7 @@ def build_metadata(image_path: str):
         "size": str(round(os.path.getsize(image_path) / 1024**2, 2)) + " MB",
     }
     metadata = {"fileinfo": fileinfo}
-    prompt   = {}
+    prompt = {}
 
     # PNG metadata (img.info)
     if isinstance(img, PngImageFile):
@@ -283,23 +282,16 @@ def build_metadata(image_path: str):
             try:
                 # ComfyUI stores this as a string, but the `raw` node already parses it as JSON and places it in the `prompt` key.
                 prompt.update(metadata["prompt"])
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to update prompt from PNG metadata: {e}")
 
         if "workflow" in metadata:
             try:
-                metadata["workflow"] = json.loads(metadata["workflow"])
-            except Exception:
-                pass
-
-        # In the 'raw' node, workflow is stored as a Python dict (not in `metadata`),
-        # but we put it here so that it appears in the output JSON.
-        prompt_from_image = prompt.update(metadata.get("prompt", {}))
-        if "workflow" in metadata:
-            try:
-                metadata["workflow"] = json.loads(metadata["workflow"])
-            except Exception:
-                pass
+                # FIX: Added type check to prevent trying to json.loads an already parsed dict
+                if isinstance(metadata["workflow"], str):
+                    metadata["workflow"] = json.loads(metadata["workflow"])
+            except Exception as e:
+                logger.debug(f"Failed to parse workflow JSON in PNG metadata: {e}")
 
     # JPEG EXIF
     elif isinstance(img, JpegImageFile):
@@ -318,21 +310,22 @@ def build_metadata(image_path: str):
                 raw_prompt = prompt_from_webp.decode("utf-8").replace("Prompt:", "", 1)
                 try:
                     metadata["prompt"] = json.loads(raw_prompt)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to parse WebP prompt JSON: {e}")
 
             workflow_data = exif_data.get('0th', {}).get(270, None)
             if workflow_data is not None:
                 raw_workflow = workflow_data.decode("utf-8").replace("Workflow:", "", 1)
                 try:
                     metadata["workflow"] = json.loads(raw_workflow)
-                except Exception:
-                    pass
-
-        except ValueError:   # piexif could not read
-            logger.warning("piexif error on WebP – ignore")
+                except Exception as e:
+                    logger.debug(f"Failed to parse WebP workflow JSON: {e}")
+                    
+        except ValueError as e:
+            logger.warning(f"piexif error on WebP – ignore: {e}")
 
     return img, prompt, metadata
+
  
 class LoadImageWithMetadataNode:
     """Loads an image from the input folder and returns a tensor,
@@ -342,7 +335,7 @@ class LoadImageWithMetadataNode:
     def INPUT_TYPES(cls):
         input_dir = folder_paths.get_input_directory()
 
-        exclude_files  = {"Thumbs.db", "*.DS_Store", "desktop.ini", "*.lock"}
+        exclude_files = {"Thumbs.db", "*.DS_Store", "desktop.ini", "*.lock"}
         exclude_folders = {"clipspace", ".*"}
 
         valid_extensions = ('.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif')
@@ -370,10 +363,10 @@ class LoadImageWithMetadataNode:
     RETURN_TYPES = ("IMAGE", "MASK", "METADATA_RAW", "METADATA_CLEAN")
     RETURN_NAMES = ("image", "mask", "Metadata RAW", "Metadata Clean")
     OUTPUT_NODE = True
-    FUNCTION   = "execute"
+    FUNCTION = "execute"
     DESCRIPTION = (
-        "Loads an image from the input directory, applies EXIF orientation correction, and outputs the image tensor along with an alpha mask (if present)."
-        "Additionally, it provides both full raw metadata and a filtered 'clean' version containing only essential parameters for downstream workflows."
+        "Loads an image from the input directory, applies EXIF orientation correction, and outputs the image tensor along with an alpha mask (if present). "
+        "Additionally, it provides both full raw metadata and a filtered 'clean' version containing only essential parameters."
     )
 
     # ---------------------------------------------------------------
@@ -395,7 +388,7 @@ class LoadImageWithMetadataNode:
 
         # 3️. Mask (if there is an alpha channel)
         if 'A' in img.getbands():
-            mask_np    = np.array(img.getchannel('A')).astype(np.float32) / 255.0
+            mask_np = np.array(img.getchannel('A')).astype(np.float32) / 255.0
             mask_torch = 1. - torch.from_numpy(mask_np)
         else:
             mask_torch = torch.zeros((64, 64), dtype=torch.float32)
@@ -450,8 +443,8 @@ class SaveImageNoMetaNode:
     CATEGORY = "ImageSaver"
     OUTPUT_NODE = True
     DESCRIPTION = (
-        "Saves images to the output folder without embedding workflow metadata."
-        "Supports PNG/JPEG formats, automatic date stamping (%date%) with custom format support, and auto-indexing (e.g., 00001.png) for duplicate files."
+        "Saves images to the output folder without embedding workflow metadata. "
+        "Supports PNG/JPEG formats, automatic date stamping (%date%) with custom format support, and auto-indexing for duplicate files."
     )
 
     def _process_single_image(self, img):
@@ -549,10 +542,7 @@ class SaveImageNoMetaNode:
 
         # Determine batch size
         if isinstance(image, torch.Tensor):
-            if image.ndim == 4:
-                batch_size = image.shape[0]
-            else:
-                batch_size = 1
+            batch_size = image.shape[0] if image.ndim == 4 else 1
         else:
             # fallback
             batch_size = 1
@@ -601,11 +591,7 @@ class SaveImageNoMetaNode:
                 if unique_path.exists():
                     # If it exists (unlikely due to _get_next_index), fallback to _unique_name for this single file
                     unique_path = self._unique_name(unique_path)
-                # Process the i-th image
-                if isinstance(image, torch.Tensor):
-                    img_tensor = image[i] if image.ndim == 4 else image
-                else:
-                    img_tensor = image  # fallback
+                img_tensor = image[i] if isinstance(image, torch.Tensor) and image.ndim == 4 else image
                 img_np = self._process_single_image(img_tensor)
                 pil_img = Image.fromarray(img_np)
                 pil_img.info.clear()

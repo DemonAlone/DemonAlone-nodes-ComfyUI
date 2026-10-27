@@ -63,7 +63,7 @@ class SamplerGeneratorNode:
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Generates a comma-separated string and list of any selected samplers from up to 10 inputs."
+        "Generates a comma-separated string and list of any selected samplers from up to 10 inputs. "
         "Useful for dynamically constructing sampler lists based on user selection before feeding them into sampling nodes."
     )
 
@@ -90,7 +90,7 @@ class SamplerSelectorFromStringNode:
     FUNCTION = "get_names"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Converts a string input into a valid KSampler sampler object."
+        "Converts a string input into a valid KSampler sampler object. "
         "Automatically validates the input and falls back to 'euler' if an unsupported sampler name is provided, ensuring workflow stability."
     )
 
@@ -138,7 +138,7 @@ class SchedulerGeneratorNode:
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Generates a comma-separated string and list of any selected schedulers from up to 10 inputs."
+        "Generates a comma-separated string and list of any selected schedulers from up to 10 inputs. "
         "Used to dynamically assemble scheduler configurations from multiple source nodes before applying them to the sampling process."
     )
 
@@ -165,7 +165,7 @@ class SchedulerSelectorFromStringNode:
     FUNCTION = "get_names"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Parses a string input to select a compatible KSampler scheduler."
+        "Parses a string input to select a compatible KSampler scheduler. "
         "Includes basic validation to handle incorrect inputs gracefully by defaulting to the 'normal' scheduler when necessary."
     )
 
@@ -264,7 +264,7 @@ class TextEncoderGeneratorNode:
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Consolidates up to 10 selected text encoders (CLIP models) into a unified string output and list."
+        "Consolidates up to 10 selected text encoders (CLIP models) into a unified string output and list. "
         "Enables the dynamic assembly of multi-stage conditioning pipelines by combining various encoder variants."
     )
 
@@ -295,7 +295,7 @@ class TextEncoderSelectorNode:
     CATEGORY = "utils"
     FUNCTION = "get_encoder"
     DESCRIPTION = (
-        "Selects a single Text Encoder (CLIP model) from the installed encoders."
+        "Selects a single Text Encoder (CLIP model) from the installed encoders. "
         "Provides plain text string representation of the selection."
     )
 
@@ -320,7 +320,7 @@ class VAEGeneratorNode:
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Aggregates up to 10 selected VAE models into a single comma-separated string and a corresponding list."
+        "Aggregates up to 10 selected VAE models into a single comma-separated string and a corresponding list. "
         "Designed to dynamically build a chain of VAEs for processing workflows that require multiple decode/encode stages."
     )
 
@@ -394,7 +394,7 @@ class LORASelectorNode:
     FUNCTION = "generate_string"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Aggregates up to 10 LoRA models with individually assigned weights, generating both a formatted prompt string and a structured list."
+        "Aggregates up to 10 LoRA models with individually assigned weights, generating both a formatted prompt string and a structured list. "
         "Supports dynamic inclusion of empty values (placeholders) alongside active LoRAs for flexible pipeline construction."
     )
 

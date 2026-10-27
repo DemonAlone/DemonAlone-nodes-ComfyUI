@@ -74,7 +74,7 @@ class DA_Enhanced_KSampler:
     FUNCTION = "sample"
     CATEGORY = "Sampling"
     DESCRIPTION = (
-        "An advanced KSampler supporting Model Shift (SDE), dynamic noise masking, and customizable preview frequency."
+        "An advanced KSampler supporting Model Shift (SDE), dynamic noise masking, and customizable preview frequency. "
         "Allows users to control how often latent previews are rendered during the sampling process to optimize memory usage and visual feedback."
     )
 
@@ -204,7 +204,7 @@ class DA_TiledUpscaler:
     FUNCTION = "upscale_process"
     CATEGORY = "Image Processing/Upscale"
     DESCRIPTION = (
-        "Tiled diffusion upscaling with optional ESRGAN pre-scaling."
+        "Tiled diffusion upscaling with optional ESRGAN pre-scaling. "
         "Memory-efficient processing of large images in tiles, featuring seamless overlap blending, configurable denoise strength, and preview callbacks for detail enhancement without VRAM exhaustion."
     )
     

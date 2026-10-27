@@ -52,7 +52,7 @@ class MaskDebugNode:
     RETURN_TYPES = ("STRING",)
     FUNCTION = "debug"
     DESCRIPTION = (
-        "Inspects and reports the tensor shape of a connected mask node in string format." 
+        "Inspects and reports the tensor shape of a connected mask node in string format. " 
         "Useful for debugging pipeline issues related to dimension mismatches or verifying input consistency before further processing steps."
     )
 

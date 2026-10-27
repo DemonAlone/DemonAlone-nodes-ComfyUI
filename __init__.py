@@ -2,7 +2,6 @@ from .nodes import (
     ConditionalVAEDecodePreview,
     DA_BusInNode,
     DA_BusOutNode,
-    DA_LatentLoader,
     OptionalCondMergeNode,
 )
 
@@ -91,6 +90,12 @@ from .XYZ_plot_V2 import (
     NativeXYZTotalCalculator,
 )
 
+from .loaders import (
+    DA_LatentLoader,
+    DA_LoadCheckpointAdvanced,
+    DA_LoadDiffusionModelAdvanced,
+)
+
 NODE_CLASS_MAPPINGS = {
     "AnyAdapterNode": AnyAdapterNode,
     "AnyConcatNode": AnyConcatNode,
@@ -110,6 +115,8 @@ NODE_CLASS_MAPPINGS = {
     "DA_DenoiseSelectorNode": DA_DenoiseSelectorNode,
     "DA_Enhanced_KSampler": DA_Enhanced_KSampler,
     "DA_LatentLoader": DA_LatentLoader,
+    "DA_LoadCheckpointAdvanced": DA_LoadCheckpointAdvanced,
+    "DA_LoadDiffusionModelAdvanced": DA_LoadDiffusionModelAdvanced,
     "DA_SamplerSelectorNode": DA_SamplerSelectorNode,
     "DA_SchedulerSelectorNode": DA_SchedulerSelectorNode,
     "DA_StepsSelectorNode": DA_StepsSelectorNode,
@@ -177,6 +184,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DA_DenoiseSelectorNode": "Denoise Selector",
     "DA_Enhanced_KSampler": "DA_Enhanced_KSampler",
     "DA_LatentLoader": "Latent Loader",
+    "DA_LoadCheckpointAdvanced": "DA_LoadCheckpointAdvanced",
+    "DA_LoadDiffusionModelAdvanced": "DA_LoadDiffusionModelAdvanced",
     "DA_SamplerSelectorNode": " Sampler Selector",
     "DA_SchedulerSelectorNode": "Scheduler Selector",
     "DA_StepsSelectorNode": "Steps Selector",

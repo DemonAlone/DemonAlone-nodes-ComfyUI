@@ -34,27 +34,19 @@ class DiffusionModelSelectorNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                # Input: one file from the diffusion_models folder (combo‑menu)
-                "model_name": (
-                    folder_paths.get_filename_list("diffusion_models"),
-                ),
+                "model_name": (folder_paths.get_filename_list("diffusion_models"),),
             }
         }
 
-    RETURN_TYPES = (
-        folder_paths.get_filename_list("diffusion_models"), 
-        "STRING",
-        "STRING", 
-    )
-    RETURN_NAMES = ("model_name", "model_name_str", "model_name_clean")
-    CATEGORY = "utils"     # Folder in UI
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("model_name_str", "model_name_clean")
+    CATEGORY = "utils"
     FUNCTION = "get_model_name"
-    DESCRIPTION = "Retrieves diffusion model names and outputs filename tuple, full string representation, and a clean name without path and extension."
-
+    DESCRIPTION = "Retrieves diffusion model names and outputs full string representation and a clean name without path and extension."
 
     def get_model_name(self, model_name):     
         clean_name = os.path.splitext(os.path.basename(model_name))[0]
-        return model_name, model_name, clean_name   
+        return (model_name, clean_name)
 
 
 def get_sampler_list():
@@ -232,34 +224,28 @@ class ModelGeneratorNode:
         list_output = selected  
         return (string_output, list_output)
  
-
 class CheckpointSelectorNode:
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                # Input: a single checkpoint. The combo‑menu will be built automatically.
                 "ckpt_name": (folder_paths.get_filename_list("checkpoints"),),
             }
         }
 
     RETURN_TYPES = (
-        folder_paths.get_filename_list("checkpoints"),
         "STRING",
         "STRING",
     )
-    RETURN_NAMES = ("ckpt_name", "ckpt_name_str", "ckpt_name_clean")
+    RETURN_NAMES = ("ckpt_name_str", "ckpt_name_clean")
     CATEGORY = "utils"
     FUNCTION = "get_ckpt_name"
-    DESCRIPTION = "Retrieves checkpoint model names from the ComfyUI checkpoints folder and outputs filename tuple, full string representation, and a clean name without path and extension."
+    DESCRIPTION = "Retrieves checkpoint model names from the ComfyUI checkpoints folder and outputs full string representation and a clean name without path and extension."
 
     def get_ckpt_name(self, ckpt_name):
-        # 1. os.path.basename takes only the filename if there was a subpath there (e.g. 'SDXL/model.safetensors' -> 'model.safetensors')
-        # 2. os.path.splitext divides 'model.safetensors' by ('model', '.safetensors') and we take the [0] element.
         clean_name = os.path.splitext(os.path.basename(ckpt_name))[0]
-        
-        return (ckpt_name, ckpt_name, clean_name)
 
+        return (ckpt_name, clean_name)
 
 
 def get_text_encoder_list():
@@ -304,20 +290,17 @@ class TextEncoderSelectorNode:
             }
         }
 
-    RETURN_TYPES = (
-        folder_paths.get_filename_list("text_encoders"),  # combo‑output
-        "STRING",                                        # plain text output
-    )
-    RETURN_NAMES = ("enc_name", "enc_name_str")
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("enc_name_str",)
     CATEGORY = "utils"
     FUNCTION = "get_encoder"
     DESCRIPTION = (
         "Selects a single Text Encoder (CLIP model) from the installed encoders."
-        "Provides both the encoder path compatible with loading nodes and a corresponding string output, enabling flexible routing of conditioning models within the workflow."
+        "Provides plain text string representation of the selection."
     )
 
     def get_encoder(self, enc_name):
-        return enc_name, enc_name
+        return (enc_name,)
 
 
 def get_vae_list():
@@ -326,10 +309,6 @@ def get_vae_list():
     return ["none"] + vae_files
 
 class VAEGeneratorNode:
-    """
-    Generator of a list of VAE files.
-    Parameters: 10 dropdowns → string of the selected values.
-    """
     @classmethod
     def INPUT_TYPES(cls):
         vaes = get_vae_list()
@@ -373,17 +352,10 @@ class VAESelectorNode:
         folder_paths.get_filename_list("vae"),  # combo‑output
         "STRING",                               # plain text output
     )
-    RETURN_NAMES = ("vae_name", "vae_name_str")
+    RETURN_NAMES = ("vae_name_str",)
     CATEGORY = "utils"
     FUNCTION = "get_vae"
-    DESCRIPTION = (
-        "Selects a single VAE model from the available list."
-        "Outputs both the model path (for direct connection to nodes like Load VAE) and a plain text string representation of the selection for use in other utility nodes."
-    )
-
-    def get_vae(self, vae_name):
-        return vae_name, vae_name
-
+    DESCRIPTION = "Outputs a plain text string representation of the selection."
 
 def get_lora_list():
     """

@@ -7,7 +7,7 @@ class AnyAdapterNode:
     FUNCTION = "adapt"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "A flexible pass-through node that accepts any input type." 
+        "A flexible pass-through node that accepts any input type. " 
         "It safely forwards data downstream or returns a clean None output if the input is unconnected, ensuring pipeline stability without breaking custom workflows."
     )    
         
@@ -31,7 +31,7 @@ class AnytoIntegerAdapterNode:
     FUNCTION = "adapt"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Safely converts any compatible input value into an integer."
+        "Safely converts any compatible input value into an integer. "
         "If the conversion fails or is impossible, it returns None without crashing the workflow."
     )
     
@@ -54,7 +54,7 @@ class AnytoFloatAdapterNode:
     FUNCTION = "adapt"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Safely converts any compatible input value into a floating-point number." 
+        "Safely converts any compatible input value into a floating-point number. " 
         "If the conversion fails or is impossible, it returns None to prevent workflow errors."
     )
 
@@ -83,7 +83,7 @@ class AnyConcatNode:
     FUNCTION = "concat"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Concatenates any number of up to 5 text inputs into a single string using a custom delimiter." 
+        "Concatenates any number of up to 5 text inputs into a single string using a custom delimiter. " 
         "Acts as a flexible joiner that automatically ignores unconnected slots, ideal for building dynamic text prompts or combining parameters from various sources."
     )
 
@@ -111,7 +111,7 @@ class StringToAnyNode:
     RETURN_NAMES = ("any_output",)
     FUNCTION = "convert"
     CATEGORY = "utils"
-    DESCRIPTION = "Converts a string value into a universal type-compatible output, allowing seamless bridging between different data types."
+    DESCRIPTION = "Converts a string value into a universal type-compatible output, allowing seamless bridging between different data types. "
 
     def convert(self, input_string):
         return (input_string,)
@@ -129,7 +129,7 @@ class StringToFloatNode:
     FUNCTION = "convert"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Converts a text input string into a floating-point number with error handling."
+        "Converts a text input string into a floating-point number with error handling. "
         "If the string cannot be parsed as a valid float, it logs the issue and returns 0.0 to keep the pipeline running smoothly."
     )
     
@@ -154,7 +154,7 @@ class StringToIntNode:
     FUNCTION = "convert"
     CATEGORY = "utils"
     DESCRIPTION = (
-        "Safely converts a text input string into an integer."
+        "Safely converts a text input string into an integer. "
         "Automatically handles parsing errors by logging them and returning 0 as a fallback, ensuring the workflow continues without crashing on invalid numeric strings."
     )
     
@@ -179,7 +179,7 @@ class TextConcatNode:
     RETURN_TYPES = ("STRING",)
     FUNCTION = "concat"
     CATEGORY = "utils"
-    DESCRIPTION = "Merges up to 5 optional text inputs into a single continuous string, using a configurable delimiter."
+    DESCRIPTION = "Merges up to 5 optional text inputs into a single continuous string, using a configurable delimiter. "
 
     def concat(self,
                delimiter,

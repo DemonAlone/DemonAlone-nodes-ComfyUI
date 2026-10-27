@@ -116,7 +116,7 @@ class ConditionalVAEDecodePreview:
     CATEGORY = "custom_nodes"
     OUTPUT_NODE = True
     DESCRIPTION = (
-        "Decodes latents to images using the provided VAE when enabled, outputting both Latent and Image for previewing."
+        "Decodes latents to images using the provided VAE when enabled, outputting both Latent and Image for previewing. "
         "When disabled, acts as a pass-through (Reroute) node, passing the original Latent unchanged without decoding."
     )
 

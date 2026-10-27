@@ -14,7 +14,7 @@ class CountListNode:
     FUNCTION = "get_length"
     CATEGORY = "Utils"
     DESCRIPTION = (
-            "Calculates and returns the total number of elements in an input list."
+            "Calculates and returns the total number of elements in an input list. "
             "Provides a quick way to determine batch sizes, list lengths, or count available inputs within your workflow logic."
     )
 
@@ -36,7 +36,7 @@ class ListCombinerNode:
     FUNCTION = "join_lists"
     CATEGORY = "List Operations"
     DESCRIPTION = (
-        "Merges two input lists into a single combined list, preserving the order of elements from both sources."
+        "Merges two input lists into a single combined list, preserving the order of elements from both sources. "
         "Essential for chaining multiple generated lists (e.g., samplers or encoders) into one cohesive pipeline stage."
     )
 

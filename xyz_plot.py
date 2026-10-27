@@ -107,7 +107,7 @@ class MyXYZHelper:
     FUNCTION = "run"
     CATEGORY = "Utils"
     DESCRIPTION = (
-        "Orchestrates the grid layout by mapping the current execution index to specific X, Y, and Z values."
+        "Orchestrates the grid layout by mapping the current execution index to specific X, Y, and Z values. "
         "Dynamically generates annotations for the XYZ plot headers based on input lists and styling parameters."
     )
 
@@ -174,7 +174,7 @@ class MyXYGridAccumulator(FeedbackNode):
     FUNCTION = "run"
     CATEGORY = "Utils"
     DESCRIPTION = (
-        "Buffers individual images into a visual grid as the XYZ loop progresses."
+        "Buffers individual images into a visual grid as the XYZ loop progresses. "
         "Handles the accumulation of images per page, renders the preview grid with axis labels when full, and clears the batch upon completion of each slice."
     )
 
@@ -418,7 +418,7 @@ class MyXYZSuperStacker:
     FUNCTION = "stack"
     CATEGORY = "Utils"
     DESCRIPTION = (
-        "Collects all rendered XY pages into a single multi-page image sequence once the full XYZ dataset is generated."
+        "Collects all rendered XY pages into a single multi-page image sequence once the full XYZ dataset is generated. "
         "Acts as the final aggregation node to output the complete result set for saving or further processing."
     )
 
@@ -467,7 +467,7 @@ class XYZConflictValidatorAndSwitch:
     FUNCTION = "execute"
     CATEGORY = "utils/XYZ"
     DESCRIPTION = (
-        "Safeguards the XYZ pipeline against type mismatches by enforcing that only one active parameter exists per execution step."
+        "Safeguards the XYZ pipeline against type mismatches by enforcing that only one active parameter exists per execution step. "
         "Automatically casts and outputs the current grid value (X, Y, or Z) as an Int, Float, or String based on configuration."
     )
 

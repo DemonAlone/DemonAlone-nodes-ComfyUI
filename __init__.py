@@ -42,7 +42,9 @@ from .other_list_tools import (
 from .ksamplers import (
     DA_Base_KSampler,
     DA_Enhanced_KSampler,
-    DA_TiledUpscaler, 
+    DA_TiledUpscaler,
+    DA_RefineTaskNode,
+    DA_MasterRefiner,
 )
 
 from .other_selectors import (
@@ -117,6 +119,8 @@ NODE_CLASS_MAPPINGS = {
     "DA_LatentLoader": DA_LatentLoader,
     "DA_LoadCheckpointAdvanced": DA_LoadCheckpointAdvanced,
     "DA_LoadDiffusionModelAdvanced": DA_LoadDiffusionModelAdvanced,
+    "DA_MasterRefiner": DA_MasterRefiner,
+    "DA_RefineTaskNode": DA_RefineTaskNode,
     "DA_SamplerSelectorNode": DA_SamplerSelectorNode,
     "DA_SchedulerSelectorNode": DA_SchedulerSelectorNode,
     "DA_StepsSelectorNode": DA_StepsSelectorNode,
@@ -186,6 +190,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DA_LatentLoader": "Latent Loader",
     "DA_LoadCheckpointAdvanced": "DA_LoadCheckpointAdvanced",
     "DA_LoadDiffusionModelAdvanced": "DA_LoadDiffusionModelAdvanced",
+    "DA_MasterRefiner": "DA_MasterRefiner",
+    "DA_RefineTaskNode": "DA_RefineTaskNode",
     "DA_SamplerSelectorNode": " Sampler Selector",
     "DA_SchedulerSelectorNode": "Scheduler Selector",
     "DA_StepsSelectorNode": "Steps Selector",

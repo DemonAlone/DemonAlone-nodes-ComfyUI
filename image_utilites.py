@@ -528,11 +528,14 @@ class SaveImageNoMetaNode:
         processed_path = path.replace("%date%", date_str)
         
         # Define the root of the output folder
-        output_base = Path(os.getcwd()) / "output"
+        output_base = Path(folder_paths.get_output_directory()).resolve()
         
-        # Formulate the target file path inside 'output'
-        clean_relative_path = processed_path.lstrip("/\\").lstrip("./")
-        target_file_path = output_base / clean_relative_path
+        # Collect the target path and expand all '..'
+        clean_relative_path = processed_path.lstrip("/\\")
+        target_file_path = (output_base / clean_relative_path).resolve()
+        
+        if output_base not in target_file_path.parents:
+            raise ValueError(f"Access denied: path '{path}' escapes the output directory.")
         
         # Handle extension logic: replace existing extension with chosen format
         if target_file_path.suffix != "" and target_file_path.suffix[1:].lower() != format:

@@ -107,7 +107,17 @@ class DA_LatentLoader:
     def load_latent(self, latent_file):
         if latent_file == "[No latents found in output]":
             raise FileNotFoundError("No .latent/.safetensors files found in output")
-        full_path = os.path.join(folder_paths.get_output_directory(), latent_file)
+            
+        output_dir = os.path.realpath(folder_paths.get_output_directory())
+        full_path = os.path.realpath(os.path.join(output_dir, latent_file))
+        
+        # Protection against path-traversal: check that the file is strictly inside the output_dir
+        if os.path.commonpath([output_dir, full_path]) != output_dir:
+            raise ValueError(f"Access denied: {latent_file} is outside the output directory.")
+            
+        if not os.path.isfile(full_path):
+            raise FileNotFoundError(f"Latent file not found: {latent_file}")
+
         with open(full_path, "rb") as f:
             data = f.read()
         json_start = data.find(b'{')

@@ -9,6 +9,10 @@ import torchvision.transforms as transforms
 import comfy.model_management
 import math
 import sys
+import os
+import folder_paths
+import comfy.utils
+from ultralytics import YOLO
 
 
 # DA_Base_KSampler and DA_Enhanced_KSampler based on WAS_KSampler from https://github.com/WASasquatch/was-node-suite-comfyui (archived)
@@ -411,3 +415,299 @@ class DA_TiledUpscaler:
 
         final_image = (output_canvas / (weight_canvas + 1e-8)).clamp(0, 1)
         return (final_image,)
+
+
+# Register or find the directory for YOLO models
+def get_yolo_models():
+    # Search in standard ComfyUI folders (ultralytics/bbox or just ultralytics)
+    models = []
+    for folder_name in ["ultralytics", "ultralytics_bbox"]:
+        if folder_name in folder_paths.folder_names_and_paths:
+            models.extend(folder_paths.get_filename_list(folder_name))
+    return sorted(list(set(models))) if models else ["none"]
+
+def get_yolo_path(model_name):
+    for folder_name in ["ultralytics", "ultralytics_bbox"]:
+        if folder_name in folder_paths.folder_names_and_paths:
+            path = folder_paths.get_full_path(folder_name, model_name)
+            if path and os.path.exists(path):
+                return path
+    return None
+
+# ==============================================================================
+# 1. "THIN CLIENT" (Node for building the task stack)
+# ==============================================================================
+class DA_RefineTaskNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "yolo_model": (get_yolo_models(),),
+                "confidence": ("FLOAT", {"default": 0.35, "min": 0.05, "max": 1.0, "step": 0.05}),
+                "crop_padding": ("INT", {"default": 32, "min": 0, "max": 256, "step": 8, "tooltip": "Padding around the bounding box in pixels for context"}),
+                "target_size": ("INT", {"default": 512, "min": 256, "max": 1536, "step": 64, "tooltip": "Length of the longest side of the crop during generation"}),
+                "denoise": ("FLOAT", {"default": 0.35, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "scale_denoise": (["fixed", "smaller_less", "smaller_more"], {"default": "fixed", "tooltip": "Denoise progression based on object area"}),
+                "seed_shift": ("INT", {"default": 0, "min": 0, "max": 999999, "step": 1, "tooltip": "Seed shift for this task (0 = use server seed)"}),
+                "positive": ("CONDITIONING",),
+                "negative": ("CONDITIONING",),
+            },
+            "optional": {
+                "prev_stack": ("DA_REFINE_STACK",),
+            }
+        }
+
+    RETURN_TYPES = ("DA_REFINE_STACK",)
+    RETURN_NAMES = ("refine_stack",)
+    FUNCTION = "add_task"
+    CATEGORY = "Image Processing/Refiner"
+    DESCRIPTION = (
+        "Defines a specific refinement task by combining a YOLO model selection with parameters like denoising strength, crop size, and padding. "
+        "It allows you to build a stack of multiple detection-based refinement tasks to be processed in sequence."
+    )    
+
+    def add_task(self, yolo_model, confidence, crop_padding, target_size, denoise, scale_denoise, seed_shift, positive, negative, prev_stack=None):
+        # Copy the previous stack to avoid mutating data during graph re-runs
+        stack = list(prev_stack) if prev_stack is not None else []
+        
+        if yolo_model != "none":
+            task = {
+                "yolo_model": yolo_model,
+                "confidence": confidence,
+                "crop_padding": crop_padding,
+                "target_size": target_size,
+                "denoise": denoise,
+                "scale_denoise": scale_denoise,
+                "seed_shift": seed_shift,
+                "positive": positive,
+                "negative": negative,
+            }
+            stack.append(task)
+            
+        return (stack,)
+
+# ==============================================================================
+# 2. "SERVER" (Execution node)
+# ==============================================================================
+class DA_MasterRefiner:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "model": ("MODEL",),
+                "vae": ("VAE",),
+                "refine_stack": ("DA_REFINE_STACK",),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "steps": ("INT", {"default": 15, "min": 1, "max": 100}),
+                "cfg": ("FLOAT", {"default": 5.0, "min": 0.0, "max": 100.0}),
+                "sampler_name": (comfy.samplers.KSampler.SAMPLERS,),
+                "scheduler": (comfy.samplers.KSampler.SCHEDULERS,),
+                "mask_feather": ("INT", {"default": 16, "min": 0, "max": 128, "step": 4}),
+                "preview_freq": ("INT", {"default": 2, "min": 0, "max": 100, "tooltip": "Preview update frequency in steps (0 = disable preview for max speed)"}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "process_stack"
+    CATEGORY = "Image Processing/Refiner"
+    DESCRIPTION = (
+        "Executes the batch processing of all defined tasks by detecting objects via YOLO, isolating them, and refining them using a targeted sampling process. "
+        "It automatically handles cropping, resizing, and seamless blending of the refined results back into the original image."
+    )
+
+    # Your clean function for smooth mask edges (adapted for rectangular crops)
+    def make_feather_mask(self, h, w, feather):
+        mask = torch.ones((h, w), dtype=torch.float32)
+        if feather > 0:
+            f_h = min(feather, h // 2)
+            f_w = min(feather, w // 2)
+            if f_h > 0:
+                mask[:f_h, :] *= torch.linspace(0, 1, f_h).view(-1, 1)
+                mask[-f_h:, :] *= torch.linspace(0, 1, f_h).flip(0).view(-1, 1)
+            if f_w > 0:
+                mask[:, :f_w] *= torch.linspace(0, 1, f_w)
+                mask[:, -f_w:] *= torch.linspace(0, 1, f_w).flip(0)
+        return mask.unsqueeze(0).unsqueeze(-1) # [1, H, W, 1]
+
+    # Calculate target resolution while preserving proportions and multiples of 8 for VAE
+    def get_aspect_safe_size(self, orig_h, orig_w, target_max_side):
+        if orig_h >= orig_w:
+            scale = target_max_side / orig_h
+            new_h = target_max_side
+            new_w = max(64, int(round((orig_w * scale) / 8.0)) * 8)
+        else:
+            scale = target_max_side / orig_w
+            new_w = target_max_side
+            new_h = max(64, int(round((orig_h * scale) / 8.0)) * 8)
+        return new_h, new_w
+
+    def calculate_dynamic_denoise(self, base_denoise, mode, box_area, total_area):
+        if mode == "fixed" or total_area == 0:
+            return base_denoise
+        
+        # Relative area of the object (e.g., from 0.01 to 0.5 of the whole frame)
+        ratio = min(max(box_area / total_area, 0.01), 0.5) / 0.5 # Normalize to [0.02 .. 1.0]
+        
+        if mode == "smaller_less":
+            # The smaller the object, the softer the impact (from 40% to 100% of base_denoise)
+            factor = 0.4 + 0.6 * ratio
+        elif mode == "smaller_more":
+            # The smaller the object, the stronger the redraw (from 100% to 40%)
+            factor = 1.0 - 0.6 * ratio
+            
+        return round(min(max(base_denoise * factor, 0.05), 1.0), 3)
+
+    # Detect objects via YOLO
+    def detect_boxes_for_batch(self, images_tensor, model_name, confidence):
+        model_path = get_yolo_path(model_name)
+        if not model_path:
+            print(f"[DA_Refiner] Warning: Model not found: {model_name}")
+            return [[] for _ in range(images_tensor.shape[0])]
+        
+        yolo = YOLO(model_path)
+        batch_boxes = []
+        
+        # Run the detector over each image in the batch
+        for b in range(images_tensor.shape[0]):
+            img_np = (images_tensor[b:b+1].cpu().numpy() * 255).clip(0, 255).astype("uint8")[0]
+            results = yolo.predict(img_np, conf=confidence, verbose=False)
+            boxes = []
+            for r in results:
+                for box in r.boxes.xyxy.cpu().numpy():
+                    boxes.append([int(coord) for coord in box])
+            batch_boxes.append(boxes)
+            
+        del yolo
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        return batch_boxes
+
+    def process_stack(self, image, model, vae, refine_stack, seed, steps, cfg, sampler_name, scheduler, mask_feather, preview_freq):
+        if not refine_stack:
+            return (image,)
+
+        # Work with a copy of the image, updating it step by step
+        canvas = image.clone()
+        B, H, W, C = canvas.shape
+        total_area = H * W
+        device = comfy.model_management.get_torch_device()
+
+        # 1. Pre-pass: gather the work plan to build an accurate progress bar
+        # Structure: execution_plan[task_idx] = [boxes_img_0, boxes_img_1, ...]
+        execution_plan = []
+        total_objects_count = 0
+        
+        for task in refine_stack:
+            batch_boxes = self.detect_boxes_for_batch(canvas, task["yolo_model"], task["confidence"])
+            execution_plan.append(batch_boxes)
+            for boxes in batch_boxes:
+                total_objects_count += len(boxes)
+
+        if total_objects_count == 0:
+            print("[DA_Refiner] No objects detected across all tasks. Skipping refinement.")
+            return (canvas,)
+
+        total_steps_all = total_objects_count * steps
+        pbar = comfy.utils.ProgressBar(total_steps_all)
+        print(f"[DA_Refiner] Found {total_objects_count} object(s) across {len(refine_stack)} task(s). Total steps: {total_steps_all}")
+
+        # Initialize previewer only if preview_freq > 0
+        previewer = None
+        preview_format = "JPEG"
+        if preview_freq > 0:
+            try:
+                previewer = latent_preview.get_previewer(device, model.model.latent_format)
+            except Exception as e:
+                print(f"[DA_Refiner] Preview init failed: {e}")
+
+        def make_callback(start_step, total_steps, freq, pbar_ref, previewer_ref, fmt, obj_idx, total_objs, steps_local):
+            def callback(step, x0, x, total_steps_local):
+                global_step = start_step + step + 1
+                preview_bytes = None
+                if previewer_ref is not None and freq > 0 and ((step + 1) % freq == 0 or (step + 1) == total_steps_local):
+                    preview_bytes = previewer_ref.decode_latent_to_preview_image(fmt, x0)
+                pbar_ref.update_absolute(global_step, total_steps, preview_bytes)
+                
+                percent = (step + 1) / steps_local
+                bar_len = 25
+                filled = int(bar_len * percent)
+                bar = '█' * filled + '░' * (bar_len - filled)
+                sys.stdout.write(f"\r[DA_Refiner] Obj {obj_idx+1}/{total_objs}: {bar} {percent*100:3.0f}% (step {step+1}/{steps_local})")
+                if step + 1 == steps_local:
+                    sys.stdout.write("\n")
+                sys.stdout.flush()
+            return callback
+
+        current_obj_idx = 0
+        # 2. Main execution loop
+        for task_idx, task in enumerate(refine_stack):
+            batch_boxes = execution_plan[task_idx]
+            shift = task.get("seed_shift", 0)
+            
+            for b in range(B):
+                boxes = batch_boxes[b]
+                if not boxes:
+                    print(f"[DA_Refiner] No objects found for {task['yolo_model']}.")
+                    continue
+                for box_idx, (x1, y1, x2, y2) in enumerate(boxes):
+                    pad = task["crop_padding"]
+                    cx1 = max(0, x1 - pad)
+                    cy1 = max(0, y1 - pad)
+                    cx2 = min(W, x2 + pad)
+                    cy2 = min(H, y2 + pad)
+                    orig_w = cx2 - cx1
+                    orig_h = cy2 - cy1
+                    if orig_w < 16 or orig_h < 16:
+                        current_obj_idx += 1
+                        continue
+                    # Extract crop
+                    crop = canvas[b:b+1, cy1:cy2, cx1:cx2, :]
+                
+                    # Calculate denoise for specific object
+                    box_area = (x2 - x1) * (y2 - y1)
+                    current_denoise = self.calculate_dynamic_denoise(
+                        task["denoise"], task["scale_denoise"], box_area, total_area
+                    )
+
+                    # Scale crop to target_size (preserving proportions or square)
+                    scaled_h, scaled_w = self.get_aspect_safe_size(orig_h, orig_w, task["target_size"])
+                    crop_nchw = crop.permute(0, 3, 1, 2)
+                    scaled_nchw = F.interpolate(crop_nchw, size=(scaled_h, scaled_w), mode="bicubic", align_corners=False)
+                    scaled_crop = scaled_nchw.permute(0, 2, 3, 1)
+
+                    # --- Sampling Block ---
+                    # Sampling with callback
+                    start_global_step = current_obj_idx * steps
+                    callback_func = make_callback(
+                        start_global_step, total_steps_all, preview_freq,
+                        pbar, previewer, preview_format,
+                        current_obj_idx, total_objects_count, steps
+                    )
+                    latent = vae.encode(scaled_crop).to(device)
+                    # Account for client seed_shift with a large step to avoid collisions between objects
+                    current_seed = (seed + (shift * 100000) + (b * 10000) + (task_idx * 1000) + box_idx) & 0xffffffffffffffff
+                    noise = comfy.sample.prepare_noise(latent, current_seed, None)
+                    
+                    samples = comfy.sample.sample(
+                        model, noise, steps, cfg, sampler_name, scheduler,
+                        task["positive"], task["negative"], latent, denoise=current_denoise,
+                        disable_pbar=True,
+                        callback=callback_func
+                    )
+                    
+                    decoded = vae.decode(samples.cpu())
+                    # -------------------------
+
+                    # Return crop to original size [orig_h, orig_w]
+                    dec_nchw = decoded.permute(0, 3, 1, 2)
+                    restored_nchw = F.interpolate(dec_nchw, size=(orig_h, orig_w), mode="bicubic", align_corners=False)
+                    restored_crop = restored_nchw.permute(0, 2, 3, 1)
+
+                    # Stitch back with soft edges
+                    mask = self.make_feather_mask(orig_h, orig_w, mask_feather).to(canvas.device)
+                    original_patch = canvas[b:b+1, cy1:cy2, cx1:cx2, :]
+                    blended_patch = original_patch * (1.0 - mask) + restored_crop * mask
+                    canvas[b:b+1, cy1:cy2, cx1:cx2, :] = blended_patch
+                    current_obj_idx += 1
+        return (canvas,)

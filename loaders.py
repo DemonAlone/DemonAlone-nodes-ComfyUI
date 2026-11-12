@@ -1,15 +1,16 @@
-import os
-import folder_paths
-import comfy.sd
-import os
 import json
-import torch
 import logging
+import os
+
+import comfy.sd
+import folder_paths
+import torch
+
 logger = logging.getLogger(__name__)
 
 class DA_LoadDiffusionModelAdvanced:
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 # 1. Combo list that will scan the folder diffusion_models
@@ -56,7 +57,7 @@ class DA_LoadDiffusionModelAdvanced:
 
 class DA_LoadCheckpointAdvanced:
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "ckpt_name": (folder_paths.get_filename_list("checkpoints"),),
@@ -171,6 +172,7 @@ class DA_LatentLoader:
         return -1
     def _legacy_load(self, blob):
         import io
+
         from safetensors.torch import load as safetensors_load
 
         loaders = [
@@ -182,10 +184,11 @@ class DA_LatentLoader:
             try:
                 obj = loader(blob)
                 return self._extract(obj)
-            except Exception as e:
+            except (RuntimeError, TypeError, ValueError, OSError, EOFError) as e:
                 logger.debug(f"Legacy loader attempt failed: {e}")
                 continue
         return None
+
     def _extract(self, obj):
         if isinstance(obj, dict):
             t = obj.get("samples", next((v for v in obj.values() if isinstance(v, torch.Tensor)), None))
@@ -194,7 +197,8 @@ class DA_LatentLoader:
         elif isinstance(obj, torch.Tensor):
             t = obj
         else:
-            raise RuntimeError(f"Unknown type: {type(obj)}")
+            raise TypeError(f"Unknown type: {type(obj)}")
+
         if t.ndim == 3:
             t = t.unsqueeze(0)
         elif t.ndim == 2:

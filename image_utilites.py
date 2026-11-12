@@ -1,19 +1,21 @@
-import os
-import json
-import hashlib
 import fnmatch
+import hashlib
+import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
+from typing import ClassVar
+
 import comfy.utils
-import torch
+import folder_paths
 import numpy as np
-from torch.nn import functional as F
+import torch
 from PIL import Image, ImageOps
+from PIL.ExifTags import TAGS
 from PIL.JpegImagePlugin import JpegImageFile
 from PIL.PngImagePlugin import PngImageFile
-from PIL.ExifTags import TAGS
-import folder_paths
+from torch.nn import functional as F
 
 logger = logging.getLogger(__name__)
 
@@ -106,12 +108,10 @@ class ImageResizeNode:
             crop_y2 = crop_y + final_h
             if crop_x2 > resize_w:
                 crop_x -= (crop_x2 - resize_w)
-            if crop_x < 0:
-                crop_x = 0
+            crop_x = max(crop_x, 0)
             if crop_y2 > resize_h:
                 crop_y -= (crop_y2 - resize_h)
-            if crop_y < 0:
-                crop_y = 0
+            crop_y = max(crop_y, 0)
             crop_x2 = crop_x + final_w
             crop_y2 = crop_y + final_h
 
@@ -198,8 +198,8 @@ class ResizeMethodControlNode:
     Sends the selected value as a combo type for compatibility.
     Should be connected to the 'method' input of ImageResizeNode.
     """
-    #Define the list once to avoid duplication.
-    METHODS = ["stretch", "keep proportion", "fill / crop", "pad"]
+    # Define the list once to avoid duplication.
+    METHODS: ClassVar[list[str]] = ["stretch", "keep proportion", "fill / crop", "pad"]
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -226,7 +226,7 @@ class ResizeInterpolationControlNode:
     Outputs the chosen interpolation type.
     Can be connected to the 'interpolation' input of ImageResizeNode.
     """
-    INTERPOLATION = ["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos", "hamming"]
+    INTERPOLATION: ClassVar[list[str]] = ["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos", "hamming"]
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -272,7 +272,7 @@ def build_metadata(image_path: str):
             try:
                 # If the user commented arbitrary fields as JSON, parse them.
                 metadata[k] = json.loads(v)
-            except Exception:
+            except (json.JSONDecodeError, TypeError):
                 metadata[k] = str(v)
 
         # PNG usually contains prompt / workflow / parameters
@@ -280,7 +280,7 @@ def build_metadata(image_path: str):
             try:
                 # ComfyUI stores this as a string, but the `raw` node already parses it as JSON and places it in the `prompt` key.
                 prompt.update(metadata["prompt"])
-            except Exception as e:
+            except (TypeError, ValueError) as e:
                 logger.debug(f"Failed to update prompt from PNG metadata: {e}")
 
         if "workflow" in metadata:
@@ -288,7 +288,7 @@ def build_metadata(image_path: str):
                 # FIX: Added type check to prevent trying to json.loads an already parsed dict
                 if isinstance(metadata["workflow"], str):
                     metadata["workflow"] = json.loads(metadata["workflow"])
-            except Exception as e:
+            except json.JSONDecodeError as e:
                 logger.debug(f"Failed to parse workflow JSON in PNG metadata: {e}")
 
     # JPEG EXIF
@@ -308,7 +308,7 @@ def build_metadata(image_path: str):
                 raw_prompt = prompt_from_webp.decode("utf-8").replace("Prompt:", "", 1)
                 try:
                     metadata["prompt"] = json.loads(raw_prompt)
-                except Exception as e:
+                except json.JSONDecodeError as e:
                     logger.debug(f"Failed to parse WebP prompt JSON: {e}")
 
             workflow_data = exif_data.get('0th', {}).get(270, None)
@@ -316,7 +316,7 @@ def build_metadata(image_path: str):
                 raw_workflow = workflow_data.decode("utf-8").replace("Workflow:", "", 1)
                 try:
                     metadata["workflow"] = json.loads(raw_workflow)
-                except Exception as e:
+                except json.JSONDecodeError as e:
                     logger.debug(f"Failed to parse WebP workflow JSON: {e}")
                     
         except ValueError as e:
@@ -501,8 +501,7 @@ class SaveImageNoMetaNode:
                 suffix = name[len(stem)+1:]  # everything after stem + "_"
                 if suffix.isdigit():
                     idx = int(suffix)
-                    if idx > max_idx:
-                        max_idx = idx
+                    max_idx = max(max_idx, idx)
         return max_idx + 1
 
     def save(self, image, path: str, format: str, quality: int, preview: bool, date_mask: bool, custom_date_format: str):
@@ -536,9 +535,7 @@ class SaveImageNoMetaNode:
             raise ValueError(f"Access denied: path '{path}' escapes the output directory.")
         
         # Handle extension logic: replace existing extension with chosen format
-        if target_file_path.suffix != "" and target_file_path.suffix[1:].lower() != format:
-            target_file_path = target_file_path.with_suffix(f".{format}")
-        elif target_file_path.suffix == "":
+        if (target_file_path.suffix != "" and target_file_path.suffix[1:].lower() != format) or target_file_path.suffix == "":
             target_file_path = target_file_path.with_suffix(f".{format}")
 
         # Determine batch size

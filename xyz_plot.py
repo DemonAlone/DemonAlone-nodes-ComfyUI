@@ -1,9 +1,10 @@
 import os
-import torch
-import numpy as np
-from PIL import Image, ImageDraw, ImageFont
-from comfy_execution.graph import ExecutionBlocker
+
 import folder_paths
+import numpy as np
+import torch
+from comfy_execution.graph import ExecutionBlocker
+from PIL import Image, ImageDraw, ImageFont
 
 
 def images_grid_by_x(
@@ -61,7 +62,7 @@ class FeedbackNode:
         full_output_folder, filename, counter, subfolder, filename_prefix = folder_paths.get_save_image_path(
             filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0])
         
-        results = list()
+        results = []
         for image in images:
             # Convert tensor to array for PIL
             i = 255. * image.cpu().numpy()
@@ -128,9 +129,9 @@ class MyXYZHelper:
         y_pre = kwargs.get('y_prefix', "")
         z_pre = kwargs.get('z_prefix', "")
 
-        x_ann = ";".join([f"{x_pre}: {str(v)}" if x_pre else str(v) for v in x_list])
-        y_ann = ";".join([f"{y_pre}: {str(v)}" if y_pre else str(v) for v in y_list])
-        z_label = f"{z_pre}: {str(z_list[z_idx])}" if z_pre else str(z_list[z_idx])
+        x_ann = ";".join([f"{x_pre}: {v!s}" if x_pre else str(v) for v in x_list])
+        y_ann = ";".join([f"{y_pre}: {v!s}" if y_pre else str(v) for v in y_list])
+        z_label = f"{z_pre}: {z_list[z_idx]!s}" if z_pre else str(z_list[z_idx])
 
         XYZ_GRID_CONTROL = (
             total_per_page, 
@@ -215,13 +216,12 @@ class MyXYGridAccumulator(FeedbackNode):
         try:
             font = ImageFont.truetype("arial.ttf", f_size)
             font_big = ImageFont.truetype("arial.ttf", int(f_size * 1.5))
-        except:
+        except OSError:
             font = ImageFont.load_default()
             font_big = font
 
         # --- 3. Basic grid (cells only, no labels) ---
         base_grid = images_grid_by_x(pil_images, max_x_items=x_size, gap=gap)
-        base_w, base_h = base_grid.size
         
         # --- 4. Function for drawing labels on the passed grid ---
         def add_labels_to_grid(grid_img, x_texts, y_texts, z_label, font, font_big, gap, cell_w, cell_h, y_count, x_count, max_y_width=400):
@@ -276,8 +276,7 @@ class MyXYGridAccumulator(FeedbackNode):
                     x_wrapped.append(lines)
                     line_h = draw.textbbox((0, 0), "Ay", font=font)[3] - draw.textbbox((0, 0), "Ay", font=font)[1]
                     needed_h = len(lines) * (line_h + x_line_spacing) + x_text_padding
-                    if needed_h > x_label_height:
-                        x_label_height = needed_h
+                    x_label_height = max(x_label_height, needed_h)
 
             # Y labels
             y_wrapped = []
@@ -397,7 +396,6 @@ class MyXYGridAccumulator(FeedbackNode):
         
 # --- 3. SUPER STACKER (final batch) ---
 class MyXYZSuperStacker:
-    storage = []
 
     @classmethod
     def INPUT_TYPES(cls):

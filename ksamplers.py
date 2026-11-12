@@ -1,17 +1,19 @@
-import torch
-from torch.nn import functional as F
-import comfy.samplers
+import math
+import os
+import sys
+from typing import Any
+
 import comfy.model_management
 import comfy.sample
-import latent_preview
-import nodes
-import math
-import sys
-import os
-import folder_paths
+import comfy.samplers
 import comfy.utils
+import folder_paths
+import latent_preview
+import torch
+from torch.nn import functional as F
 from ultralytics import YOLO
-from typing import Any
+
+import nodes
 
 # DA_Base_KSampler and DA_Enhanced_KSampler based on WAS_KSampler from https://github.com/WASasquatch/was-node-suite-comfyui (archived)
 
@@ -109,7 +111,7 @@ class DA_Enhanced_KSampler:
         if shift:
             try:
                 model = self._apply_shift(model, shift)
-            except Exception as e:
+            except Exception as e: # noqa: BLE001
                 print(f"[DA_Enhanced_KSampler] error applying Model_Shift: {e}")
         # 1. Data preparation (almost identical to common_ksampler)
         device = comfy.model_management.get_torch_device()
@@ -337,7 +339,7 @@ class DA_TiledUpscaler:
         try:
             previewer = latent_preview.get_previewer(device, model.model.latent_format)
             preview_format = "JPEG"
-        except Exception as e:
+        except Exception as e: # noqa: BLE001
             print(f"[TiledUpscaler] Preview not available: {e}")
             previewer = None
 
@@ -420,7 +422,7 @@ def get_yolo_models():
     for folder_name in ["ultralytics", "ultralytics_bbox"]:
         if folder_name in folder_paths.folder_names_and_paths:
             models.extend(folder_paths.get_filename_list(folder_name))
-    return sorted(list(set(models))) if models else ["none"]
+    return sorted(set(models)) if models else ["none"]
 
 def get_yolo_path(model_name):
     for folder_name in ["ultralytics", "ultralytics_bbox"]:
@@ -531,11 +533,11 @@ class DA_MasterRefiner:
         if orig_h >= orig_w:
             scale = target_max_side / orig_h
             new_h = target_max_side
-            new_w = max(64, int(round((orig_w * scale) / 8.0)) * 8)
+            new_w = max(64, round((orig_w * scale) / 8.0) * 8)
         else:
             scale = target_max_side / orig_w
             new_w = target_max_side
-            new_h = max(64, int(round((orig_h * scale) / 8.0)) * 8)
+            new_h = max(64, round((orig_h * scale) / 8.0) * 8)
         return new_h, new_w
 
     def calculate_dynamic_denoise(self, base_denoise, mode, box_area, total_area):
@@ -585,7 +587,7 @@ class DA_MasterRefiner:
 
         # Work with a copy of the image, updating it step by step
         canvas = image.clone()
-        B, H, W, C = canvas.shape
+        B, H, W, _C = canvas.shape
         total_area = H * W
         device = comfy.model_management.get_torch_device()
 
@@ -614,7 +616,7 @@ class DA_MasterRefiner:
         if preview_freq > 0:
             try:
                 previewer = latent_preview.get_previewer(device, model.model.latent_format)
-            except Exception as e:
+            except Exception as e: # noqa: BLE001
                 print(f"[DA_Refiner] Preview init failed: {e}")
 
         def make_callback(start_step, total_steps, freq, pbar_ref, previewer_ref, fmt, obj_idx, total_objs, steps_local):

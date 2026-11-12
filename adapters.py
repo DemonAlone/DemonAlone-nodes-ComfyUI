@@ -35,7 +35,7 @@ class AnytoIntegerAdapterNode:
         "If the conversion fails or is impossible, it returns None without crashing the workflow."
     )
     
-    def adapt(self, input_any):
+    def adapt(self, input_any=None):
         """
         Converts the input data to an integer. If conversion is impossible, returns None
         """
@@ -58,9 +58,9 @@ class AnytoFloatAdapterNode:
         "If the conversion fails or is impossible, it returns None to prevent workflow errors."
     )
 
-    def adapt(self, input_any):
+    def adapt(self, input_any=None):
         """
-        Converts the input data to an integer. If conversion is impossible, returns None
+        Converts the input data to a float. If conversion is impossible, returns None
         """
         try:
             return (float(input_any),)
@@ -136,7 +136,7 @@ class StringToFloatNode:
     def convert(self, text_value):
         try:
             return (float(text_value),)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             print(f"[StringToFloatNode] Conversion error for '{text_value}': {e}")
             return (0.0,)
 
@@ -161,7 +161,7 @@ class StringToIntNode:
     def convert(self, text_value):
         try:
             return (int(text_value),)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             # Log the error in the console; here we simply return 0
             print(f"[StringToIntNode] Conversion error for '{text_value}': {e}")
             return (0,)

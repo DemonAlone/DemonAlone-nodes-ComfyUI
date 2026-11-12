@@ -1,8 +1,9 @@
-import torch
+import logging
+
 import numpy as np
+import torch
 from PIL import Image, ImageDraw, ImageFont
 from server import PromptServer
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +31,10 @@ class ImageCounterNode:
 
         try:
             if PromptServer.instance and hasattr(PromptServer.instance, 'prompt_queue'):
-                queue_running, queue_pending = PromptServer.instance.prompt_queue.get_current_queue()
+                queue_running, _queue_pending = PromptServer.instance.prompt_queue.get_current_queue()
                 if queue_running is not None and isinstance(queue_running, list) and len(queue_running) > 0:
                     current_prompt_id = queue_running
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.debug(f"Failed to read server queue for auto-reset: {e}")
 
         # Reset counter on new Queue run
@@ -144,7 +145,7 @@ class NativeXYZGridRenderer:
         try:
             font = ImageFont.truetype("arial.ttf", f_size)
             font_big = ImageFont.truetype("arial.ttf", int(f_size * 1.5))
-        except:
+        except OSError:
             font = ImageFont.load_default()
             font_big = font
 
@@ -192,9 +193,9 @@ class NativeXYZGridRenderer:
                 base_grid.paste(img, (x_pos, y_pos))
 
             # Preparing texts
-            x_texts = [f"{x_pre}: {str(v)}" if x_pre else str(v) for v in x_labels] if x_labels else []
-            y_texts = [f"{y_pre}: {str(v)}" if y_pre else str(v) for v in y_labels] if y_labels else []
-            z_label = f"{z_pre}: {str(z_labels[z_idx])}" if z_pre and z_labels and z_idx < len(z_labels) else (str(z_labels[z_idx]) if z_labels and z_idx < len(z_labels) else "")
+            x_texts = [f"{x_pre}: {v!s}" if x_pre else str(v) for v in x_labels] if x_labels else []
+            y_texts = [f"{y_pre}: {v!s}" if y_pre else str(v) for v in y_labels] if y_labels else []
+            z_label = f"{z_pre}: {z_labels[z_idx]!s}" if z_pre and z_labels and z_idx < len(z_labels) else (str(z_labels[z_idx]) if z_labels and z_idx < len(z_labels) else "")
 
             max_y_width = 400
             temp_img = Image.new("RGB", (10, 10))
@@ -209,8 +210,7 @@ class NativeXYZGridRenderer:
                 line_bbox = temp_draw.textbbox((0, 0), "Ay", font=font)
                 line_h = line_bbox[3] - line_bbox[1]
                 needed_h = len(lines) * (line_h + 5) + 10
-                if needed_h > x_label_height:
-                    x_label_height = needed_h
+                x_label_height = max(x_label_height, needed_h)
 
             z_height = int(f_size * 1.5) + 20 if z_label else 0
 
@@ -331,8 +331,7 @@ class NativeXYZTotalCalculator:
         # Multiply the active axes to obtain the exact amount of generation
         total = len_x * len_y * len_z
         
-        if total < 1:
-            total = 1
+        total = max(total, 1)
 
         # save ONE resulting number into class memory
         NativeXYZTotalCalculator.final_total_grid_images = total

@@ -1,5 +1,6 @@
-import re
 import itertools
+import re
+
 
 class CountListNode:
     @classmethod

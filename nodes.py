@@ -1,4 +1,4 @@
-from nodes import VAEDecode, PreviewImage
+from nodes import PreviewImage, VAEDecode
 
 
 class OptionalCondMergeNode:

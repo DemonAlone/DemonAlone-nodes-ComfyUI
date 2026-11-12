@@ -1,4 +1,7 @@
+from typing import ClassVar
+
 import folder_paths
+
 
 class BooleanSwitchNode:
     @classmethod
@@ -115,20 +118,20 @@ class PonyPrefixesNode:
     DESCRIPTION = "Dynamically constructs a prompt prefix string containing Pony-specific score, rating, and source tags (e.g., score_9, rating_safe). Combines selected variants into a single comma-separated string for immediate use in text encoding."
     
     # mappings
-    _SCORE_MAP = {
+    _SCORE_MAP: ClassVar[dict[str, str]] = {
         "Everything":     "score_9, score_8_up, score_7_up, score_6_up, score_5_up, ",
         "Average":        "score_9, score_8_up, score_7_up, score_6_up, score_5_up, ",
         "Good":           "score_9, score_8_up, score_7_up, ",
         "Only the best":  "score_9, ",
     }
 
-    _RATING_MAP = {
+    _RATING_MAP: ClassVar[dict[str, str]] = {
         "Safe":          "rating_safe, ",
         "Questionable":  "rating_questionable, ",
         "Explicit":      "rating_explicit, ",
     }
 
-    _SOURCE_MAP = {
+    _SOURCE_MAP: ClassVar[dict[str, str]] = {
         "Anime":   "source_anime, ",
         "Furry":   "source_furry, ",
         "Cartoon": "source_cartoon, ",
@@ -232,7 +235,7 @@ class WanNumFramesNode:
         """
         # Protection against None if the note is connected incorrectly
         if num_frames is None:
-            return (self.default_value,)
+            return (49,)
 
         return (num_frames,)
 

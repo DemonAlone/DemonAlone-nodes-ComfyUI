@@ -495,7 +495,6 @@ class DA_MasterRefiner:
                 "image": ("IMAGE",),
                 "model": ("MODEL",),
                 "vae": ("VAE",),
-                "refine_stack": ("DA_REFINE_STACK",),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
                 "steps": ("INT", {"default": 15, "min": 1, "max": 100}),
                 "cfg": ("FLOAT", {"default": 5.0, "min": 0.0, "max": 100.0}),
@@ -503,6 +502,9 @@ class DA_MasterRefiner:
                 "scheduler": (comfy.samplers.KSampler.SCHEDULERS,),
                 "mask_feather": ("INT", {"default": 16, "min": 0, "max": 128, "step": 4}),
                 "preview_freq": ("INT", {"default": 2, "min": 0, "max": 100, "tooltip": "Preview update frequency in steps (0 = disable preview for max speed)"}),
+            },
+            "optional": {
+                "refine_stack": ("DA_REFINE_STACK", {"tooltip": "Optional task stack. If disconnected or empty, acts as a pass-through (reroutes image unchanged)."}),
             }
         }
 
@@ -511,7 +513,8 @@ class DA_MasterRefiner:
     CATEGORY = "Image Processing/Refiner"
     DESCRIPTION = (
         "Executes the batch processing of all defined tasks by detecting objects via YOLO, isolating them, and refining them using a targeted sampling process. "
-        "It automatically handles cropping, resizing, and seamless blending of the refined results back into the original image."
+        "It automatically handles cropping, resizing, and seamless blending of the refined results back into the original image. "
+        "If refine_stack is disconnected or empty, passes the input image through unchanged."
     )
 
     # Your clean function for smooth mask edges (adapted for rectangular crops)
@@ -581,7 +584,7 @@ class DA_MasterRefiner:
             torch.cuda.empty_cache()
         return batch_boxes
 
-    def process_stack(self, image, model, vae, refine_stack, seed, steps, cfg, sampler_name, scheduler, mask_feather, preview_freq):
+    def process_stack(self, image, model, vae, seed, steps, cfg, sampler_name, scheduler, mask_feather, preview_freq, refine_stack=None):
         if not refine_stack:
             return (image,)
 

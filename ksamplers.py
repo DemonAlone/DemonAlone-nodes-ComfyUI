@@ -5,15 +5,13 @@ import comfy.model_management
 import comfy.sample
 import latent_preview
 import nodes
-import torchvision.transforms as transforms
-import comfy.model_management
 import math
 import sys
 import os
 import folder_paths
 import comfy.utils
 from ultralytics import YOLO
-
+from typing import Any
 
 # DA_Base_KSampler and DA_Enhanced_KSampler based on WAS_KSampler from https://github.com/WASasquatch/was-node-suite-comfyui (archived)
 
@@ -83,7 +81,7 @@ class DA_Enhanced_KSampler:
     )
 
     # ----------Helper method----------
-    def _apply_shift(self, model: "MODEL", shift: float, multiplier: float = 1.0):
+    def _apply_shift(self, model: Any, shift: float, multiplier: float = 1.0):
         m = model.clone()
         import comfy.model_sampling
         sampling_base   = comfy.model_sampling.ModelSamplingDiscreteFlow
@@ -95,15 +93,15 @@ class DA_Enhanced_KSampler:
         return m
         
     def sample(self,
-               model: "MODEL",
+               model: Any,
                seed: int,
                steps: int,
                cfg: float,
                sampler_name: str,
                scheduler: str,
-               positive: "CONDITIONING",
-               negative: "CONDITIONING",
-               latent_image: "LATENT",
+               positive: Any,
+               negative: Any,
+               latent_image: Any,
                denoise: float = 1.0,
                shift: float = 0.0,
                preview_freq: int = 1):
@@ -308,8 +306,6 @@ class DA_TiledUpscaler:
         # ANSI color codes for terminal output
         COLOR_WARNING = "\033[93m"    # yellow
         COLOR_RESET = "\033[0m"
-        COLOR_INFO = "\033[92m"       # green optional
-        COLOR_ERROR = "\033[91m"      # red
 
         # Checking whether the tile size exceeds the final image
         if not force_full_tiles and (new_H < tile_size or new_W < tile_size):

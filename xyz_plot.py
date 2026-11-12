@@ -1,14 +1,10 @@
-import torch
-import numpy
-import numpy as np
-from comfy_execution.graph_utils import GraphBuilder
-from comfy_execution.graph import ExecutionBlocker
-import math
-from PIL import Image, ImageDraw, ImageFont
-from PIL.ExifTags import TAGS, GPSTAGS, IFD         
-from PIL.PngImagePlugin import PngImageFile
 import os
+import torch
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+from comfy_execution.graph import ExecutionBlocker
 import folder_paths
+
 
 def images_grid_by_x(
     images: list,

@@ -13,8 +13,6 @@ from PIL import Image, ImageOps
 from PIL.JpegImagePlugin import JpegImageFile
 from PIL.PngImagePlugin import PngImageFile
 from PIL.ExifTags import TAGS
-import piexif
-import re
 import folder_paths
 
 logger = logging.getLogger(__name__)
@@ -492,11 +490,9 @@ class SaveImageNoMetaNode:
         parent = base_path.parent
         stem = base_path.stem
         ext = base_path.suffix
-        # Escaping special characters (for example, square brackets) in the file name
-        safe_stem = glob.escape(stem)
-        pattern = f"{safe_stem}_[0-9][0-9][0-9][0-9][0-9]{ext}"
+        # Find all existing files matching the pattern
+        pattern = f"{stem}_[0-9][0-9][0-9][0-9][0-9]{ext}"
         existing = list(parent.glob(pattern))
-
         max_idx = 0
         for f in existing:
             # Extract the numeric part after the last '_' and before the extension

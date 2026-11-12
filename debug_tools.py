@@ -26,10 +26,9 @@ class DA_AudioDebugNode:
         shape = tuple(waveform.shape)
         # Number of channels – usually second parameter (batch, channels, samples) or (channels, samples)
         if len(shape) == 3:
-            batch, channels, samples = shape
+            _, channels, samples = shape
         elif len(shape) == 2:
             channels, samples = shape
-            batch = 1
         else:
             return (f"Unexpected shape: {shape}",)
         
@@ -57,6 +56,5 @@ class MaskDebugNode:
     )
 
     def debug(self, mask):
-        import torch
         t = mask.squeeze(-1) if mask.ndim == 4 and mask.shape[3] == 1 else mask
         return (f"shape={tuple(t.shape)}",)

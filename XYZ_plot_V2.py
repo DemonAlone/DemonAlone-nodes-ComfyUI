@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-import folder_paths
 from server import PromptServer
 import logging
 
@@ -41,7 +40,7 @@ class ImageCounterNode:
         if current_prompt_id is not None and current_prompt_id != ImageCounterNode.last_prompt_id:
             ImageCounterNode.global_image_count = 0
             ImageCounterNode.last_prompt_id = current_prompt_id
-            print(f"\n[XYZ Plot] New run detected. Counter reset to 0.\n")
+            print("\n[XYZ Plot] New run detected. Counter reset to 0.\n")
 
         # Explicitly take only the first element of the tuple shape (number of image in batch)
         # This ensures that batch_size is a clean INT, not a torch.Size object
@@ -58,14 +57,14 @@ class ImageCounterNode:
         actual_total = getattr(NativeXYZTotalCalculator, 'final_total_grid_images', 1)
 
         # Prints a nice log to the console
-        print(f"======================================")
+        print("======================================")
         if actual_total > 1:
             print(f"[XYZ Plot] Progress: Image #{ImageCounterNode.global_image_count} of {actual_total}")
             percent = (ImageCounterNode.global_image_count / actual_total) * 100
             print(f"[XYZ Plot] Completed: {percent:.1f}%")
         else:
             print(f"[XYZ Plot] Image #: {ImageCounterNode.global_image_count}")
-        print(f"======================================\n")
+        print("======================================\n")
         
         return (images,)
 
@@ -338,9 +337,9 @@ class NativeXYZTotalCalculator:
         # save ONE resulting number into class memory
         NativeXYZTotalCalculator.final_total_grid_images = total
         
-        print(f"\n======================================")
-        print(f"[XYZ Calculator] Grid calculation successful!")
-        print(f"[XYZ Calculator] Formula: X({len_x}) * Y({len_y}) * Z({len_z}) = {total} images.")
-        print(f"======================================\n")
+        print("\n======================================")
+        print("[XYZ Calculator] Grid calculation successful!")
+        print("[XYZ Calculator] Formula: X({len_x}) * Y({len_y}) * Z({len_z}) = {total} images.")
+        print("======================================\n")
         
         return (total,)

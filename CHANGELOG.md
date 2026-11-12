@@ -1,3 +1,6 @@
+## 5.8.2
+ - Changed DA_MasterRefiner
+
 ## 5.8.0
  -  Massive cleanup and bugfix
 

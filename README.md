@@ -12,6 +12,6 @@ This repository bundles a set of lightweight utility nodes for *ComfyUI* that we
 
 * **feedbackNode**, **MyXYZHelper**, **MyXYGridAccumulator**, **MyXYZSuperStacker**, **NativeXYZGridRenderer** nodes are based on nodes from  [qq-nodes-comfyui](https://github.com/kenjiqq/qq-nodes-comfyui), MIT.
 
-* **DA_RefineTaskNode** and **DA_MasterRefiner** inspired by Face **Detailer** from  [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)
+* **DA_RefineTaskNode** and **DA_MasterRefiner** inspired by **Face Detailer** from  [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)
 
 Created with the assistance of **Google Gemini**/**Gemma**, **Qwen**, **GPT-OSS**, **DeepSeek**.

@@ -699,7 +699,10 @@ class DA_MasterRefiner:
                     
                     decoded = vae.decode(samples.cpu())
                     # -------------------------
-
+                    # If VAE (as in Krea2) returned a 5D tensor [B, F, H, W, C], cast it to 4D [B, H, W, C]
+                    if decoded.ndim == 5:
+                        decoded = decoded[:, 0]
+                    
                     # Return crop to original size [orig_h, orig_w]
                     dec_nchw = decoded.permute(0, 3, 1, 2)
                     restored_nchw = F.interpolate(dec_nchw, size=(orig_h, orig_w), mode="bicubic", align_corners=False)

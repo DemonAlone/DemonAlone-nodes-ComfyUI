@@ -1,3 +1,6 @@
+## 5.8.4
+ - Fix for 5D latent models like Krea2
+
 ## 5.8.2
  - Changed DA_MasterRefiner
 

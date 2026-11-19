@@ -359,6 +359,7 @@ class VAESelectorNode:
     FUNCTION = "get_vae"
     DESCRIPTION = "Outputs a plain text string representation of the selection."
 
+
 def get_lora_list():
     """
     Return a list of all LoRA files located in the `loras/` folder,
@@ -384,7 +385,7 @@ class LORASelectorNode:
                 "FLOAT",
                 {
                     "default": 1.0,
-                    "min": 0.00,
+                    "min": -10.00,
                     "max": 10.00,
                     "step": 0.05,
                 },
